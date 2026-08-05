@@ -9,6 +9,7 @@ Aplicación multipaso para recoger los datos necesarios para crear una subcuenta
 - Revisión final con consentimiento y resumen de la configuración.
 - Endpoint único para enviar el registro completo a Google Sheets y GoHighLevel.
 - Panel interno inicial en `/admin` para revisar el último envío desde el navegador.
+- Vista pública de diseño del portal en `/portal-demo`, con una productora ficticia.
 
 ## Para activar las integraciones
 

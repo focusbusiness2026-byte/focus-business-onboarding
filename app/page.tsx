@@ -33,13 +33,15 @@ export default function Home() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormState>(initial);
   const [status, setStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
+  const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
     const draft = localStorage.getItem("focus-productora-draft");
     if (draft) setData({ ...initial, ...JSON.parse(draft) });
+    setDraftReady(true);
   }, []);
 
-  useEffect(() => { localStorage.setItem("focus-productora-draft", JSON.stringify(data)); }, [data]);
+  useEffect(() => { if (draftReady) localStorage.setItem("focus-productora-draft", JSON.stringify(data)); }, [data, draftReady]);
 
   const completion = useMemo(() => Math.round(((step + 1) / steps.length) * 100), [step]);
   const setValue = (key: string, value: string | boolean) => setData((prev) => ({ ...prev, [key]: value }));
