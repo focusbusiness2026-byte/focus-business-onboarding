@@ -14,13 +14,18 @@ function text(value: unknown) {
   return Array.isArray(value) ? value.join(", ") : value == null ? "" : String(value);
 }
 
+function selectionWithOther(value: unknown, detail: unknown) {
+  if (!Array.isArray(value)) return text(value);
+  return value.map((item) => item === "Otro" && String(detail || "").trim() ? `Otro: ${String(detail).trim()}` : String(item)).join(", ");
+}
+
 export function toSheetRecord(row: StoredSubmission): Record<string, string> {
   const data = row.payload;
   return {
     "ID registro": row.id, "Fecha envío": row.submittedAt, "Estado": row.status,
     "Empresa": text(data.companyName), "Razón social": text(data.legalName), "Web": text(data.website), "Actividad": text(data.activity), "Ciudad / país": text(data.location), "Tamaño equipo": text(data.teamSize), "Descripción": text(data.description),
     "Color marca": text(data.brandPrimaryColor || data.brandColor), "Logo URL": text(data.logoUrl), "Tono marca": text(data.formality),
-    "Servicio prioritario": text(data.mainService), "Ticket medio": text(data.ticket), "Modelo de precio": text(data.priceModel), "Servicios": text(data.services), "Público": text(data.audience), "Sectores": text(data.sectors), "Mercados": text(data.geographies),
+    "Servicio prioritario": text(data.mainService), "Ticket medio": text(data.ticket), "Modelo de precio": text(data.priceModel), "Servicios": selectionWithOther(data.services, data.servicesOther), "Público": text(data.audience), "Sectores": selectionWithOther(data.sectors, data.sectorsOther), "Mercados": text(data.geographies),
     "Tamaño empresa ideal": text(data.idealCompanySize), "Decisor habitual": text(data.decisionMaker), "Presupuesto mínimo": text(data.minimumBudget),
     "Objetivos": text(data.objectives), "Canales": text(data.channels), "Campos del lead": text(data.leadFields), "Tiempo de respuesta": text(data.responseTime), "Asignación de leads": text(data.assignment), "Ciclo de venta": text(data.salesCycle), "Criterio de cualificación": text(data.qualification),
     "Responsable": text(data.contactName), "Cargo": text(data.contactRole), "Email responsable": text(data.contactEmail), "Teléfono / WhatsApp": text(data.contactPhone), "Nombre reunión": text(data.bookingName), "Duración reunión": text(data.meetingDuration), "Disponibilidad": text(data.availability), "Horario": text(data.schedule), "Tratamiento": text(data.pronoun), "Tono comunicación": text(data.communicationTone),

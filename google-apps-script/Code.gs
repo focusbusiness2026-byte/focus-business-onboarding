@@ -37,7 +37,7 @@ function valueFor(header, data) {
     "Servicio prioritario": () => data.mainService,
     "Ticket medio": () => data.ticket,
     "Modelo de precio": () => data.priceModel,
-    "Servicios": () => asText(data.services), "Público": () => asText(data.audience), "Sectores": () => asText(data.sectors), "Mercados": () => asText(data.geographies),
+    "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => asText(data.geographies),
     "Tamaño empresa ideal": () => data.idealCompanySize, "Decisor habitual": () => data.decisionMaker, "Presupuesto mínimo": () => data.minimumBudget,
     "Objetivos": () => asText(data.objectives), "Canales": () => asText(data.channels), "Campos del lead": () => asText(data.leadFields),
     "Tiempo de respuesta": () => data.responseTime, "Asignación de leads": () => data.assignment, "Ciclo de venta": () => data.salesCycle, "Criterio de cualificación": () => data.qualification,
@@ -57,6 +57,7 @@ function valueFor(header, data) {
 }
 
 function asText(value) { return Array.isArray(value) ? value.join(", ") : (value || ""); }
+function withOther(value, detail) { return Array.isArray(value) ? value.map((item) => item === "Otro" && detail ? `Otro: ${detail}` : item).join(", ") : (value || ""); }
 
 function doGet(e) {
   if (e.parameter.action !== "portal" || !isPortalToken(e.parameter.token)) return json({ ok: false, error: "No autorizado" });
