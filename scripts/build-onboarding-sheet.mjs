@@ -7,7 +7,7 @@ await fs.mkdir(outputDir, { recursive: true });
 const workbook = Workbook.create();
 const guide = workbook.worksheets.add("LEER_PRIMERO");
 const onboarding = workbook.worksheets.add("Onboarding");
-const mapping = workbook.worksheets.add("Campos Codex y GHL");
+const mapping = workbook.worksheets.add("Campos técnicos y GHL");
 const dashboard = workbook.worksheets.add("Vista operativa");
 
 const gold = "#D9AF43";
@@ -18,7 +18,7 @@ const headers = [
   "Servicio prioritario", "Ticket medio", "Modelo de precio", "Servicios", "Público", "Sectores", "Mercados", "Tamaño empresa ideal", "Decisor habitual", "Presupuesto mínimo",
   "Objetivos", "Canales", "Campos del lead", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación",
   "Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación",
-  "Automatizaciones", "Integraciones", "Cuenta GoHighLevel", "Google Sheets", "Excepciones", "Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Subcuenta GHL", "Config. Codex URL", "Notas internas",
+  "Automatizaciones", "Integraciones", "Cuenta GoHighLevel", "Google Sheets", "Excepciones", "Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Subcuenta GHL", "Config. técnica URL", "Notas internas",
   "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos", "Preguntas adicionales", "Herramientas actuales", "Herramientas a conectar",
   "Automatizaciones workflow", "Automatizaciones WhatsApp", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios"
 ];
@@ -28,7 +28,7 @@ guide.getRange("A1").values = [["Focus Business · Registro central de onboardin
 guide.getRange("A1:H1").format = { fill: navy, font: { bold: true, color: "#FFFFFF", size: 16 }, horizontalAlignment: "left", verticalAlignment: "center" };
 guide.getRange("A3:B7").values = [
   ["Qué guarda", "Una fila por productora con toda la configuración comercial, operativa y técnica."],
-  ["Quién lo usa", "Focus Business para preparar la subcuenta de GoHighLevel y Codex para construir la configuración."],
+  ["Quién lo usa", "Focus Business para preparar la subcuenta de GoHighLevel y construir la configuración técnica."],
   ["Estado", "Nuevo → En revisión → Listo para GHL → Subcuenta creada → Activo."],
   ["Cómo llega", "El formulario envía el registro estructurado al webhook de Google Sheets."],
   ["Seguridad", "No guardar claves API ni contraseñas. Solo datos de onboarding y enlaces autorizados."],
@@ -36,7 +36,7 @@ guide.getRange("A3:B7").values = [
 guide.getRange("A3:A7").format = { fill: "#E8EDF4", font: { bold: true, color: navy } };
 guide.getRange("B3:B7").format = { wrapText: true };
 guide.getRange("A10:H10").merge();
-guide.getRange("A10").values = [["Flujo operativo: Formulario → Google Sheets → Validación interna → Archivo JSON para Codex → Subcuenta GoHighLevel → Automatizaciones"]];
+guide.getRange("A10").values = [["Flujo operativo: Formulario → Google Sheets → Validación interna → Archivo JSON de configuración → Subcuenta GoHighLevel → Automatizaciones"]];
 guide.getRange("A10:H10").format = { fill: "#FFF4D5", font: { bold: true, color: "#6F5311" }, wrapText: true };
 guide.getRange("A:A").format.columnWidth = 24;
 guide.getRange("B:B").format.columnWidth = 74;
@@ -65,7 +65,7 @@ onboarding.tables.add("A1:BN2", true, "OnboardingTable");
 onboarding.showGridLines = false;
 
 const mappings = [
-  ["Campo", "Uso en GoHighLevel", "Uso para Codex", "Obligatorio antes de crear subcuenta"],
+  ["Campo", "Uso en GoHighLevel", "Uso técnico", "Obligatorio antes de crear subcuenta"],
   ["Empresa", "Nombre de ubicación / subcuenta", "Nombre del proyecto", "Sí"],
   ["Email responsable", "Contacto principal y correo de bienvenida", "Contacto de aprobación", "Sí"],
   ["Teléfono / WhatsApp", "Canal de contacto y campos personalizados", "Configuración de canales", "No"],
@@ -99,7 +99,7 @@ dashboard.getRange("A3:B3").format = { fill: gold, font: { bold: true, color: na
 dashboard.getRange("A3:B6").format.borders = { preset: "all", style: "thin", color: "#D8E0E9" };
 dashboard.getRange("B4:B6").format = { fill: "#FFF4D5", font: { bold: true, color: navy, size: 14 }, horizontalAlignment: "center" };
 dashboard.getRange("A9:F9").merge();
-dashboard.getRange("A9").values = [["Próximo paso: filtrar Onboarding por Estado = ‘Nuevo’, verificar los campos obligatorios y descargar el JSON de configuración para Codex."]];
+dashboard.getRange("A9").values = [["Próximo paso: filtrar Onboarding por Estado = ‘Nuevo’, verificar los campos obligatorios y descargar el JSON de configuración."]];
 dashboard.getRange("A9:F9").format = { fill: "#E8EDF4", font: { color: navy }, wrapText: true };
 dashboard.getRange("A:A").format.columnWidth = 34;
 dashboard.getRange("B:B").format.columnWidth = 18;
@@ -113,7 +113,7 @@ const errors = await workbook.inspect({ kind: "match", searchTerm: "#REF!|#DIV/0
 console.log(errors.ndjson);
 const output = await SpreadsheetFile.exportXlsx(workbook);
 await output.save(`${outputDir}/focus_business_onboarding_productoras.xlsx`);
-for (const [sheetName, range] of [["LEER_PRIMERO", "A1:H12"], ["Onboarding", "A1:BN2"], ["Campos Codex y GHL", "A1:D11"], ["Vista operativa", "A1:F9"]]) {
+for (const [sheetName, range] of [["LEER_PRIMERO", "A1:H12"], ["Onboarding", "A1:BN2"], ["Campos técnicos y GHL", "A1:D11"], ["Vista operativa", "A1:F9"]]) {
   const preview = await workbook.render({ sheetName, range, scale: 1, format: "png" });
   await fs.writeFile(`${outputDir}/${sheetName.replaceAll(" ", "_")}.png`, new Uint8Array(await preview.arrayBuffer()));
 }
