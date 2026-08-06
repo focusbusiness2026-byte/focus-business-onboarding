@@ -9,6 +9,7 @@ const ACCESS_TAB = "Accesos";
 
 function doPost(e) {
   const data = JSON.parse(e.postData.contents || "{}");
+  if (!isPortalToken(data._focusToken)) return json({ ok: false, error: "No autorizado" });
   const sheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ONBOARDING_TAB);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const values = headers.map((header) => valueFor(header, data));

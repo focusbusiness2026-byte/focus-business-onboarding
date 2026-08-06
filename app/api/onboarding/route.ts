@@ -10,8 +10,9 @@ async function forward(url: string | undefined, body: unknown) {
 export async function POST(request: Request) {
   try {
     const payload = await request.json();
+    const sheetsPayload = { ...payload, _focusToken: process.env.FOCUS_PORTAL_TOKEN };
     const [sheets, ghl] = await Promise.all([
-      forward(process.env.GOOGLE_SHEETS_WEBHOOK_URL, payload),
+      forward(process.env.GOOGLE_SHEETS_WEBHOOK_URL, sheetsPayload),
       forward(process.env.GHL_ONBOARDING_WEBHOOK_URL, payload),
     ]);
     return NextResponse.json({ ok: true, sheets, ghl });
