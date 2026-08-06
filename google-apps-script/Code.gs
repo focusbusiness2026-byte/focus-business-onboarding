@@ -1,7 +1,8 @@
 /*
  * Vincular este script a la hoja "Focus Business - Onboarding de Productoras",
  * implementar como aplicación web y pegar su URL en GOOGLE_SHEETS_WEBHOOK_URL.
- * Acceso recomendado: solo usuarios autorizados de Focus Business.
+ * Implementar ejecutando como propietario y permitir acceso a cualquier usuario.
+ * Las lecturas y escrituras quedan protegidas por FOCUS_PORTAL_TOKEN.
  */
 const ONBOARDING_SHEET_ID = "1FTWbZ1gDpA4RezEz89w9PmbRjwx_2bX2mhzF67V8wiE";
 const ONBOARDING_TAB = "Onboarding";
@@ -30,7 +31,7 @@ function valueFor(header, data) {
     "Ciudad / país": () => data.location,
     "Tamaño equipo": () => data.teamSize,
     "Descripción": () => data.description,
-    "Color marca": () => data.brandColor,
+    "Color marca": () => data.brandPrimaryColor || data.brandColor,
     "Logo URL": () => data.logoUrl,
     "Tono marca": () => data.formality,
     "Servicio prioritario": () => data.mainService,
@@ -45,6 +46,12 @@ function valueFor(header, data) {
     "Tratamiento": () => data.pronoun, "Tono comunicación": () => data.communicationTone, "Automatizaciones": () => asText(data.automations), "Integraciones": () => asText(data.integrations),
     "Cuenta GoHighLevel": () => data.existingGhl, "Google Sheets": () => data.sheets, "Excepciones": () => data.exceptions, "Fecha lanzamiento": () => data.launchDate,
     "Responsable aprobación": () => data.approvalOwner, "Datos correctos": () => Boolean(data.accuracy), "Autorización": () => Boolean(data.terms),
+    "Recursos Drive": () => data.driveAssetsUrl, "Color corporativo primario": () => data.brandPrimaryColor || data.brandColor,
+    "Color corporativo secundario": () => data.brandSecondaryColor, "Tipografía títulos": () => data.headingFont, "Tipografía textos": () => data.bodyFont,
+    "Preguntas adicionales": () => data.additionalLeadQuestions, "Herramientas actuales": () => asText(data.toolsInUse), "Herramientas a conectar": () => asText(data.toolsToConnect),
+    "Automatizaciones workflow": () => asText(data.workflowAutomations), "Automatizaciones WhatsApp": () => asText(data.whatsappAutomations),
+    "Automatizaciones email": () => asText(data.emailAutomations), "Plataformas anuncios": () => asText(data.adPlatforms),
+    "Acceso anuncios": () => data.adAccess, "Reunión anuncios": () => data.adMeeting,
   };
   return fields[header] ? (fields[header]() || "") : "";
 }

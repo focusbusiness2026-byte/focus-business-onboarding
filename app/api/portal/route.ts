@@ -1,21 +1,17 @@
 import { NextResponse } from "next/server";
 import { getChatGPTUser } from "../../chatgpt-auth";
+import { listSubmissions } from "../../../db/onboarding";
+import { toSheetRecord } from "../../../lib/onboarding";
 
 export async function GET() {
   const user = await getChatGPTUser();
   if (!user) return NextResponse.json({ ok: false, error: "No autenticado" }, { status: 401 });
-  const endpoint = process.env.GOOGLE_SHEETS_PORTAL_URL;
-  const token = process.env.FOCUS_PORTAL_TOKEN;
-  if (!endpoint || !token) return NextResponse.json({ ok: false, configured: false }, { status: 503 });
+  const allowed = (process.env.PORTAL_ALLOWED_EMAILS || "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+  if (!allowed.includes(user.email.toLowerCase())) return NextResponse.json({ ok: false, error: "Acceso revocado o no autorizado" }, { status: 403 });
   try {
-    const url = new URL(endpoint);
-    url.searchParams.set("action", "portal");
-    url.searchParams.set("email", user.email);
-    url.searchParams.set("token", token);
-    const response = await fetch(url, { cache: "no-store" });
-    const body = await response.json();
-    return NextResponse.json(body, { status: response.ok ? 200 : 403 });
+    const records = (await listSubmissions()).map(toSheetRecord);
+    return NextResponse.json({ ok: true, role: "Administrador", records });
   } catch {
-    return NextResponse.json({ ok: false, error: "No se pudo consultar Google Sheets." }, { status: 502 });
+    return NextResponse.json({ ok: false, error: "No se pudo consultar la base de datos." }, { status: 502 });
   }
 }

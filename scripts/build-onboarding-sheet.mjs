@@ -12,14 +12,15 @@ const dashboard = workbook.worksheets.add("Vista operativa");
 
 const gold = "#D9AF43";
 const navy = "#0B1727";
-const slate = "#213247";
 const pale = "#F3F6FA";
 const headers = [
   "ID registro", "Fecha envío", "Estado", "Empresa", "Razón social", "Web", "Actividad", "Ciudad / país", "Tamaño equipo", "Descripción", "Color marca", "Logo URL", "Tono marca",
   "Servicio prioritario", "Ticket medio", "Modelo de precio", "Servicios", "Público", "Sectores", "Mercados", "Tamaño empresa ideal", "Decisor habitual", "Presupuesto mínimo",
   "Objetivos", "Canales", "Campos del lead", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación",
   "Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación",
-  "Automatizaciones", "Integraciones", "Cuenta GoHighLevel", "Google Sheets", "Excepciones", "Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Subcuenta GHL", "Config. Codex URL", "Notas internas"
+  "Automatizaciones", "Integraciones", "Cuenta GoHighLevel", "Google Sheets", "Excepciones", "Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Subcuenta GHL", "Config. Codex URL", "Notas internas",
+  "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos", "Preguntas adicionales", "Herramientas actuales", "Herramientas a conectar",
+  "Automatizaciones workflow", "Automatizaciones WhatsApp", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios"
 ];
 
 guide.getRange("A1:H1").merge();
@@ -47,20 +48,20 @@ onboarding.getRangeByIndexes(0, 0, 1, headers.length).values = [headers];
 onboarding.getRange("A2").values = [["Pendiente de primer envío"]];
 onboarding.getRange("B2").formulas = [["=IF(A2=\"Pendiente de primer envío\",\"\",TODAY())"]];
 onboarding.getRange("C2").values = [["Nuevo"]];
-onboarding.getRange("A1:AZ1").format = { fill: navy, font: { bold: true, color: "#FFFFFF" }, wrapText: true, horizontalAlignment: "center", verticalAlignment: "center" };
-onboarding.getRange("A2:AZ2").format = { fill: pale, wrapText: true, verticalAlignment: "top" };
-onboarding.getRange("A1:AZ2").format.borders = { preset: "all", style: "thin", color: "#D8E0E9" };
-onboarding.getRange("A1:AZ1").format.rowHeight = 40;
+onboarding.getRange("A1:BN1").format = { fill: navy, font: { bold: true, color: "#FFFFFF" }, wrapText: true, horizontalAlignment: "center", verticalAlignment: "center" };
+onboarding.getRange("A2:BN2").format = { fill: pale, wrapText: true, verticalAlignment: "top" };
+onboarding.getRange("A1:BN2").format.borders = { preset: "all", style: "thin", color: "#D8E0E9" };
+onboarding.getRange("A1:BN1").format.rowHeight = 40;
 onboarding.getRange("A:A").format.columnWidth = 22;
 onboarding.getRange("B:C").format.columnWidth = 16;
 onboarding.getRange("D:M").format.columnWidth = 21;
 onboarding.getRange("N:W").format.columnWidth = 22;
-onboarding.getRange("X:AZ").format.columnWidth = 21;
+onboarding.getRange("X:BN").format.columnWidth = 21;
 onboarding.getRange("B2").format.numberFormat = "yyyy-mm-dd";
 onboarding.getRange("C2:C501").dataValidation = { rule: { type: "list", values: ["Nuevo", "En revisión", "Listo para GHL", "Subcuenta creada", "Activo", "Pausado"] } };
-onboarding.getRange("A1:AZ2").format.wrapText = true;
+onboarding.getRange("A1:BN2").format.wrapText = true;
 onboarding.freezePanes.freezeRows(1);
-onboarding.tables.add("A1:AZ2", true, "OnboardingTable");
+onboarding.tables.add("A1:BN2", true, "OnboardingTable");
 onboarding.showGridLines = false;
 
 const mappings = [
@@ -106,13 +107,13 @@ dashboard.getRange("A1:F1").format.rowHeight = 32;
 dashboard.getRange("A9:F9").format.rowHeight = 38;
 dashboard.showGridLines = false;
 
-const inspection = await workbook.inspect({ kind: "table", range: "Onboarding!A1:AZ2", include: "values,formulas", tableMaxRows: 2, tableMaxCols: 52 });
+const inspection = await workbook.inspect({ kind: "table", range: "Onboarding!A1:BN2", include: "values,formulas", tableMaxRows: 2, tableMaxCols: 66 });
 console.log(inspection.ndjson);
 const errors = await workbook.inspect({ kind: "match", searchTerm: "#REF!|#DIV/0!|#VALUE!|#NAME\\?|#N/A", options: { useRegex: true, maxResults: 50 }, summary: "formula check" });
 console.log(errors.ndjson);
 const output = await SpreadsheetFile.exportXlsx(workbook);
 await output.save(`${outputDir}/focus_business_onboarding_productoras.xlsx`);
-for (const [sheetName, range] of [["LEER_PRIMERO", "A1:H12"], ["Onboarding", "A1:AZ2"], ["Campos Codex y GHL", "A1:D11"], ["Vista operativa", "A1:F9"]]) {
+for (const [sheetName, range] of [["LEER_PRIMERO", "A1:H12"], ["Onboarding", "A1:BN2"], ["Campos Codex y GHL", "A1:D11"], ["Vista operativa", "A1:F9"]]) {
   const preview = await workbook.render({ sheetName, range, scale: 1, format: "png" });
   await fs.writeFile(`${outputDir}/${sheetName.replaceAll(" ", "_")}.png`, new Uint8Array(await preview.arrayBuffer()));
 }
