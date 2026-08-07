@@ -1,6 +1,7 @@
 "use client";
+/* eslint-disable @next/next/no-html-link-for-pages */
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
 type RecordRow = Record<string, string | boolean>;
 type PortalResponse = {
@@ -11,11 +12,12 @@ type PortalResponse = {
   error?: string;
 };
 
-export default function PortalClient({ user }: { user: { email: string; name: string } | null }) {
-  const [email, setEmail] = useState(user?.email || "");
+export default function PortalClient() {
+  const [email, setEmail] = useState("");
+  const [currentEmail, setCurrentEmail] = useState("");
   const [data, setData] = useState<PortalResponse | null>(null);
   const [selected, setSelected] = useState<RecordRow | null>(null);
-  const [loading, setLoading] = useState(Boolean(user));
+  const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [error, setError] = useState("");
 
@@ -24,28 +26,32 @@ export default function PortalClient({ user }: { user: { email: string; name: st
     ? Object.entries(selected).filter(([, value]) => String(value ?? "").trim() !== "")
     : [];
 
-  useEffect(() => {
-    if (!user) return;
-    fetch("/api/portal", { method: "POST" })
-      .then(async (response) => {
-        const result = (await response.json()) as PortalResponse;
-        if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo abrir el portal.");
-        setData(result);
-      })
-      .catch((portalError) => setError(portalError instanceof Error ? portalError.message : "No se pudo abrir el portal."))
-      .finally(() => setLoading(false));
-  }, [user]);
-
-  function enterPortal(event: FormEvent<HTMLFormElement>) {
+  async function enterPortal(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
-    window.sessionStorage.setItem("focus-requested-email", email.trim().toLowerCase());
-    window.location.assign(`/signin-with-chatgpt?return_to=${encodeURIComponent("/portal")}`);
+    setLoading(true);
+    try {
+      const response = await fetch("/api/portal", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const result = (await response.json()) as PortalResponse;
+      if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo abrir el portal.");
+      setCurrentEmail(result.email || email.trim().toLowerCase());
+      setData(result);
+    } catch (portalError) {
+      setError(portalError instanceof Error ? portalError.message : "No se pudo abrir el portal.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function changeEmail() {
-    window.sessionStorage.removeItem("focus-requested-email");
-    window.location.assign(`/signout-with-chatgpt?return_to=${encodeURIComponent("/portal")}`);
+    setCurrentEmail("");
+    setData(null);
+    setSelected(null);
+    setError("");
   }
 
   async function deleteRecord() {
@@ -57,7 +63,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
       const response = await fetch("/api/portal", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id }),
+        body: JSON.stringify({ email: currentEmail, id }),
       });
       const result = (await response.json()) as PortalResponse;
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo borrar el registro.");
@@ -73,7 +79,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
     }
   }
 
-  if (!user || !data?.ok) {
+  if (!data?.ok) {
     return (
       <main className="access">
         <section className="access-card">
@@ -86,8 +92,8 @@ export default function PortalClient({ user }: { user: { email: string; name: st
               <span>Correo autorizado</span>
               <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nombre@empresa.com" autoComplete="email" required />
             </label>
-            <button className="primary access-button" type={user ? "button" : "submit"} onClick={user ? changeEmail : undefined} disabled={loading}>
-              {loading ? "Verificando…" : user ? "Cambiar de cuenta →" : "Verificar correo y entrar →"}
+            <button className="primary access-button" type="submit" disabled={loading}>
+              {loading ? "Verificando…" : "Entrar al portal →"}
             </button>
           </form>
           {error && <p className="access-error" role="alert">{error}</p>}
@@ -101,7 +107,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
     <main className="portal">
       <header className="portal-header">
         <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
-          <div className="viewer"><span>{user.name || data.role || "Usuario autorizado"}</span><small>{user.email}</small><button className="link-button" type="button" onClick={changeEmail}>Cambiar correo</button></div>
+          <div className="viewer"><span>{data.role || "Usuario autorizado"}</span><small>{currentEmail}</small><button className="link-button" type="button" onClick={changeEmail}>Cambiar correo</button></div>
       </header>
       <section className="portal-body">
         <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>

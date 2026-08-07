@@ -1,22 +1,19 @@
 import { NextResponse } from "next/server";
 import { deleteSubmission, listSubmissions } from "../../../db/onboarding";
 import { toSheetRecord } from "../../../lib/onboarding";
-import { getChatGPTUser } from "../../chatgpt-auth";
 
-async function authenticatedAccess() {
-  const user = await getChatGPTUser();
-  if (!user) return { email: "", authorized: false, authenticated: false };
-  const normalized = user.email.trim().toLowerCase();
+function accessFor(email: unknown) {
+  const normalized = String(email || "").trim().toLowerCase();
   const allowed = (process.env.PORTAL_ALLOWED_EMAILS || "")
     .split(",")
     .map((item) => item.trim().toLowerCase())
     .filter(Boolean);
-  return { email: normalized, authorized: allowed.includes(normalized), authenticated: true };
+  return { email: normalized, authorized: Boolean(normalized) && allowed.includes(normalized) };
 }
 
-export async function POST() {
-  const access = await authenticatedAccess();
-  if (!access.authenticated) return NextResponse.json({ ok: false, error: "Primero debes verificar tu correo." }, { status: 401 });
+export async function POST(request: Request) {
+  const body = await request.json() as { email?: string };
+  const access = accessFor(body.email);
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Este correo no está autorizado en la pestaña Accesos." }, { status: 403 });
   try {
     const records = (await listSubmissions()).map(toSheetRecord);
@@ -27,9 +24,8 @@ export async function POST() {
 }
 
 export async function DELETE(request: Request) {
-  const body = await request.json() as { id?: string };
-  const access = await authenticatedAccess();
-  if (!access.authenticated) return NextResponse.json({ ok: false, error: "Primero debes verificar tu correo." }, { status: 401 });
+  const body = await request.json() as { email?: string; id?: string };
+  const access = accessFor(body.email);
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Correo no autorizado." }, { status: 403 });
   const id = String(body.id || "").trim();
   if (!id) return NextResponse.json({ ok: false, error: "Falta el identificador del registro." }, { status: 400 });

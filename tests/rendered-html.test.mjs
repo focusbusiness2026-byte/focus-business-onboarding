@@ -41,9 +41,8 @@ test("renders a public portal access screen for anonymous visitors", async () =>
   const html = await response.text();
   assert.match(html, /Ingresa tu correo/);
   assert.match(html, /Correo autorizado/);
-  assert.match(html, /Verificar correo y entrar/);
+  assert.match(html, /Entrar al portal/);
   assert.match(html, /formulario público/);
-  assert.doesNotMatch(html, /Continuar con ChatGPT/);
 });
 
 test("allows an authorized portal user to delete a record", async () => {
@@ -51,7 +50,16 @@ test("allows an authorized portal user to delete a record", async () => {
   assert.match(source, /Borrar lead/);
   assert.match(source, /method: "DELETE"/);
   assert.match(source, /Esta acción no se puede deshacer/);
-  assert.doesNotMatch(source, /JSON.stringify\(\{ email: currentEmail, id \}\)/);
+  assert.match(source, /JSON.stringify\(\{ email: currentEmail, id \}\)/);
+});
+
+test("opens the portal directly with an authorized email", async () => {
+  const client = await readFile(new URL("../app/portal/portal-client.tsx", import.meta.url), "utf8");
+  const route = await readFile(new URL("../app/api/portal/route.ts", import.meta.url), "utf8");
+  const page = await readFile(new URL("../app/portal/page.tsx", import.meta.url), "utf8");
+  assert.match(client, /body: JSON.stringify\(\{ email: email\.trim\(\) \}\)/);
+  assert.match(route, /accessFor\(body\.email\)/);
+  assert.doesNotMatch(`${client}\n${route}\n${page}`, /signin-with-|signout-with-/);
 });
 
 test("keeps the mobile navigation and long choices inside the viewport", async () => {
