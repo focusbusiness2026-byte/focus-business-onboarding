@@ -1,25 +1,31 @@
-# Integraciones del onboarding
+# Integración del onboarding
 
-## Flujo al enviar
+## Flujo activo
 
 1. El formulario envía un único objeto JSON a `/api/onboarding`.
-2. La ruta reenvía el mismo objeto a `GOOGLE_SHEETS_WEBHOOK_URL` para registrar la respuesta completa en una hoja de cálculo.
-3. En paralelo lo reenvía a `GHL_ONBOARDING_WEBHOOK_URL`. Ese webhook debe crear o actualizar el contacto con `contactName`, `contactEmail` y `contactPhone`, asignar etiquetas como `audience`, `services` y `sectors`, y lanzar el email de bienvenida.
-4. La hoja se convierte en el registro operativo para preparar la subcuenta de GoHighLevel y el panel de administración.
+2. La API valida la respuesta de `GOOGLE_SHEETS_WEBHOOK_URL` y confirma el envío únicamente cuando Apps Script devuelve `ok: true`.
+3. Apps Script agrega una fila en la pestaña `Onboarding`.
+4. El portal consulta `GOOGLE_SHEETS_PORTAL_URL`, valida el correo contra la pestaña `Accesos` y muestra las filas de `Onboarding`.
+5. Al borrar un lead en el portal, Apps Script elimina esa misma fila de la hoja.
 
-## Configuración pendiente
+Google Sheets es la única fuente de verdad del flujo. El registro no depende de D1, GoHighLevel, Meta ni de otros webhooks.
 
-1. Abrir `google-apps-script/Code.gs` desde Google Apps Script, implementar como aplicación web y limitar el acceso a las personas autorizadas de Focus Business.
-2. En Propiedades del script, crear `FOCUS_PORTAL_TOKEN` con un valor aleatorio largo.
-3. Copiar la URL de la implementación tanto en `GOOGLE_SHEETS_WEBHOOK_URL` como en `GOOGLE_SHEETS_PORTAL_URL`, y usar el mismo secreto como `FOCUS_PORTAL_TOKEN` del sitio.
-4. Crear el webhook entrante de GoHighLevel y pegarlo en `GHL_ONBOARDING_WEBHOOK_URL`.
+## Variables requeridas
+
+- `GOOGLE_SHEETS_WEBHOOK_URL`: URL `/exec` de la aplicación web de Apps Script.
+- `GOOGLE_SHEETS_PORTAL_URL`: la misma URL `/exec`.
+- `FOCUS_PORTAL_TOKEN`: secreto largo e idéntico en el sitio y en las propiedades del script.
+
+No guardar el valor de `FOCUS_PORTAL_TOKEN` en el repositorio ni en el navegador.
+
+## Apps Script
+
+El archivo fuente es `google-apps-script/Code.gs`. Debe publicarse como aplicación web:
+
+- Ejecutar como el propietario de la hoja.
+- Permitir acceso a cualquier usuario; el token protege las lecturas y escrituras.
+- Mantener en la fila 1 de `Onboarding` los 66 encabezados definidos por `ONBOARDING_HEADERS`.
 
 ## Acceso al portal
 
-El portal usa el inicio de sesión protegido de Focus Business/ChatGPT. Para conceder o revocar acceso, añadir o actualizar un correo en la pestaña `Accesos` de Google Sheets. Las contraseñas no se almacenan ni se gestionan en la hoja.
-
-No guardar claves de Google, GoHighLevel, OpenAI o Gemini en el navegador ni en el repositorio.
-
-## Preparación para Codex
-
-El payload conserva tanto las respuestas de selección múltiple como los datos de contacto, calendario, automatizaciones e integraciones. Una automatización posterior puede leer esa fila o webhook, validar los datos y utilizar la API autorizada de GoHighLevel para crear la subcuenta y sus activos. Esa acción requiere credenciales y permisos que aún no se han facilitado.
+Para conceder o revocar acceso, añadir o actualizar un correo en la pestaña `Accesos`. Solo los correos cuyo estado sea `Activo` pueden entrar. La fecha es informativa.

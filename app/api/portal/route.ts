@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { deleteSubmission, listSubmissions } from "../../../db/onboarding";
-import { toSheetRecord } from "../../../lib/onboarding";
 
 type SheetPortalResponse = {
   ok?: boolean;
@@ -13,36 +11,27 @@ async function accessFor(email: unknown) {
   const sheetUrl = process.env.GOOGLE_SHEETS_PORTAL_URL;
   const token = process.env.FOCUS_PORTAL_TOKEN;
 
-  if (normalized && sheetUrl && token) {
-    try {
-      const url = new URL(sheetUrl);
-      url.searchParams.set("action", "portal");
-      url.searchParams.set("email", normalized);
-      url.searchParams.set("token", token);
-      const response = await fetch(url, { cache: "no-store" });
-      const payload = await response.json() as SheetPortalResponse;
-      return {
-        email: normalized,
-        authorized: response.ok && payload.ok === true,
-        role: payload.role || "Administrador",
-        records: Array.isArray(payload.records) ? payload.records : undefined,
-        unavailable: false,
-      };
-    } catch {
-      return { email: normalized, authorized: false, unavailable: true };
-    }
+  if (!normalized || !sheetUrl || !token) {
+    return { email: normalized, authorized: false, unavailable: true };
   }
 
-  const allowed = (process.env.PORTAL_ALLOWED_EMAILS || "")
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
-  return {
-    email: normalized,
-    authorized: Boolean(normalized) && allowed.includes(normalized),
-    role: "Administrador",
-    unavailable: false,
-  };
+  try {
+    const url = new URL(sheetUrl);
+    url.searchParams.set("action", "portal");
+    url.searchParams.set("email", normalized);
+    url.searchParams.set("token", token);
+    const response = await fetch(url, { cache: "no-store" });
+    const payload = await response.json() as SheetPortalResponse;
+    return {
+      email: normalized,
+      authorized: response.ok && payload.ok === true,
+      role: payload.role || "Administrador",
+      records: Array.isArray(payload.records) ? payload.records : [],
+      unavailable: false,
+    };
+  } catch {
+    return { email: normalized, authorized: false, unavailable: true };
+  }
 }
 
 export async function POST(request: Request) {
@@ -51,8 +40,7 @@ export async function POST(request: Request) {
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Este correo no está autorizado en la pestaña Accesos." }, { status: 403 });
   try {
-    const records = access.records || (await listSubmissions()).map(toSheetRecord);
-    return NextResponse.json({ ok: true, role: access.role, email: access.email, records });
+    return NextResponse.json({ ok: true, role: access.role, email: access.email, records: access.records || [] });
   } catch {
     return NextResponse.json({ ok: false, error: "No se pudieron cargar los registros." }, { status: 502 });
   }
@@ -78,13 +66,9 @@ export async function DELETE(request: Request) {
       if (!response.ok || payload.ok !== true) {
         return NextResponse.json({ ok: false, error: payload.error || "No se pudo borrar el registro de la hoja." }, { status: 502 });
       }
-      await deleteSubmission(id).catch(() => false);
       return NextResponse.json({ ok: true, id });
     }
-    const deleted = await deleteSubmission(id);
-    return deleted
-      ? NextResponse.json({ ok: true, id })
-      : NextResponse.json({ ok: false, error: "El registro ya no existe." }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "Google Sheets no está configurado." }, { status: 502 });
   } catch {
     return NextResponse.json({ ok: false, error: "No se pudo borrar el registro." }, { status: 502 });
   }
