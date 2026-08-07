@@ -21,3 +21,58 @@ main { display:flex; min-height:100vh }.sidebar { width:320px; padding:32px 28px
 .danger:hover { background:#51232b }
 .danger:disabled { opacity:.45; cursor:not-allowed }
 .delete-error { color:#ffbdc4; margin:18px 0 0; font-size:13px }
+
+/* Responsive safeguards for the form and portal. */
+body { overflow-x:hidden }
+.grid>* { min-width:0 }
+.nav-step>span { min-width:0; overflow-wrap:break-word }
+.chip { max-width:100%; white-space:normal; overflow-wrap:break-word; line-height:1.3 }
+.record>* { min-width:0 }
+.record h2,.record p,.record-meta span,.viewer { overflow-wrap:anywhere }
+.portal-body h1,.access-card h1 { margin-right:0 }
+
+@media(max-width:900px){
+  nav { gap:8px; padding:6px 2px 12px; scroll-snap-type:x proximity; overscroll-behavior-inline:contain; scrollbar-width:none; -ms-overflow-style:none }
+  nav::-webkit-scrollbar { display:none }
+  .nav-step { flex:0 0 230px; min-width:230px; min-height:82px; padding:13px 14px; border:1px solid #2c3b4e; border-radius:10px; scroll-snap-align:start; overflow:hidden }
+  .nav-step.current { border-color:#8e6e28 }
+  .content>header { display:block }
+  .content>header .progress { width:100% }
+}
+
+@media(max-width:570px){
+  .sidebar { padding:18px 14px 12px }
+  .sidebar .brand { margin-bottom:12px }
+  .nav-step { flex-basis:min(78vw,280px); min-width:min(78vw,280px); gap:12px }
+  .nav-step span { font-size:15px }
+  .nav-step small { font-size:12px; line-height:1.35 }
+  .content { padding:18px 12px 32px }
+  .content>header { margin-bottom:22px }
+  .content>header .eyebrow { margin:0 0 12px }
+  .card { width:100%; padding:22px 18px }
+  .card>h1 { padding-right:34px; margin-right:0 }
+  .chips { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px }
+  .chip { width:100%; min-height:46px; text-align:center; padding:10px }
+  footer { gap:10px }
+  footer .primary,footer .secondary { padding:12px 16px }
+  .portal-header { padding:20px 18px; gap:18px }
+  .portal-body { width:100%; padding:32px 16px }
+  .record { width:100%; padding:18px }
+  .record-meta { width:100% }
+  .access { padding:14px }
+  .access-card { padding:26px 22px }
+}
+
+@media(max-width:360px){
+  .brand { gap:9px; letter-spacing:4px; font-size:19px }
+  .brand i { width:46px; height:46px; font-size:25px }
+  .brand small { letter-spacing:3px }
+  .chips { grid-template-columns:1fr }
+  .card { padding:20px 15px }
+  .info-button { width:36px; height:36px; right:14px }
+  footer { align-items:stretch; flex-direction:column-reverse }
+  footer .primary,footer .secondary { width:100% }
+  .portal-stats div { padding:17px }
+  .detail-actions { width:100% }
+  .detail-actions button { flex:1 }
+}

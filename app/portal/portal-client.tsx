@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 
 type RecordRow = Record<string, string | boolean>;
@@ -78,7 +77,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
     return (
       <main className="access">
         <section className="access-card">
-          <Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link>
+          <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
           <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
           <h1>Ingresa tu correo</h1>
           <p className="intro">Escribe el correo autorizado en la pestaña Accesos de la hoja de cálculo.</p>
@@ -92,7 +91,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
             </button>
           </form>
           {error && <p className="access-error" role="alert">{error}</p>}
-          <p className="access-note">¿Necesitas registrar una empresa? <Link href="/">Abre el formulario público.</Link></p>
+          <p className="access-note">¿Necesitas registrar una empresa? <a href="/">Abre el formulario público.</a></p>
         </section>
       </main>
     );
@@ -101,7 +100,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
   return (
     <main className="portal">
       <header className="portal-header">
-        <Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link>
+        <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
           <div className="viewer"><span>{user.name || data.role || "Usuario autorizado"}</span><small>{user.email}</small><button className="link-button" type="button" onClick={changeEmail}>Cambiar correo</button></div>
       </header>
       <section className="portal-body">
@@ -114,7 +113,7 @@ export default function PortalClient({ user }: { user: { email: string; name: st
           <div><b>{data.role}</b><span>Tu acceso</span></div>
         </div>
         <div className="record-list">
-          {records.length === 0 ? <div className="portal-state">Todavía no hay formularios enviados.<br /><Link className="primary" href="/">Abrir formulario de registro →</Link></div> : records.map((row, index) => (
+          {records.length === 0 ? <div className="portal-state">Todavía no hay formularios enviados.<br /><a className="primary" href="/">Abrir formulario de registro →</a></div> : records.map((row, index) => (
             <button type="button" className="record record-button" key={`${String(row["ID registro"])}-${index}`} onClick={() => setSelected(row)}>
               <div><p className="record-id">{String(row["ID registro"] || "Nuevo registro")}</p><h2>{String(row["Empresa"] || "Empresa sin nombre")}</h2><p>{String(row["Servicio prioritario"] || "Servicio pendiente")} · {String(row["Público"] || "Público pendiente")}</p></div>
               <div className="record-meta"><span className={row["Estado"] === "Activo" ? "tag active" : "tag"}>{String(row["Estado"] || "Nuevo")}</span><span>{String(row["Email responsable"] || "Sin correo")}</span><span>{String(row["Fecha lanzamiento"] || "Sin fecha")}</span></div>

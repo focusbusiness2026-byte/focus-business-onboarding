@@ -53,3 +53,14 @@ test("allows an authorized portal user to delete a record", async () => {
   assert.match(source, /Esta acción no se puede deshacer/);
   assert.doesNotMatch(source, /JSON.stringify\(\{ email: currentEmail, id \}\)/);
 });
+
+test("keeps the mobile navigation and long choices inside the viewport", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(page, /Herramientas que usan actualmente/);
+  assert.match(page, /Herramientas que quieren conectar/);
+  assert.doesNotMatch(page, /Herramientas que ya utilizáis|Herramientas que queréis conectar/);
+  assert.match(css, /flex-basis:min\(78vw,280px\)/);
+  assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css, /overflow-x:hidden/);
+});
