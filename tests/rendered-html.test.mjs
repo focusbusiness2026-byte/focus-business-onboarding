@@ -80,11 +80,14 @@ test("opens the portal directly with an authorized email", async () => {
 test("uses Google Sheets as the only submission and portal data source", async () => {
   const onboardingRoute = await readFile(new URL("../app/api/onboarding/route.ts", import.meta.url), "utf8");
   const portalRoute = await readFile(new URL("../app/api/portal/route.ts", import.meta.url), "utf8");
+  const appsScript = await readFile(new URL("../google-apps-script/Code.gs", import.meta.url), "utf8");
   assert.match(onboardingRoute, /GOOGLE_SHEETS_WEBHOOK_URL/);
   assert.match(onboardingRoute, /result\.ok !== true/);
   assert.doesNotMatch(onboardingRoute, /GHL_ONBOARDING_WEBHOOK_URL|saveSubmission/);
   assert.match(portalRoute, /GOOGLE_SHEETS_PORTAL_URL/);
   assert.doesNotMatch(portalRoute, /listSubmissions|toSheetRecord|deleteSubmission/);
+  assert.match(appsScript, /safeCellValue/);
+  assert.match(appsScript, /\^\[=\+\\-@\]/);
 });
 
 test("keeps the mobile navigation and long choices inside the viewport", async () => {

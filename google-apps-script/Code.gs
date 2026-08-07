@@ -24,7 +24,7 @@ function doPost(e) {
     if (data.action === "delete") return deleteRecord(data.id);
     const sheet = onboardingSheet();
     const id = `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
-    const values = ONBOARDING_HEADERS.map((header) => valueFor(header, { ...data, _recordId: id }));
+    const values = ONBOARDING_HEADERS.map((header) => safeCellValue(valueFor(header, { ...data, _recordId: id })));
     sheet.appendRow(values);
     return json({ ok: true, id, row: sheet.getLastRow() });
   } catch (error) {
@@ -81,6 +81,10 @@ function valueFor(header, data) {
 
 function asText(value) { return Array.isArray(value) ? value.join(", ") : (value || ""); }
 function withOther(value, detail) { return Array.isArray(value) ? value.map((item) => item === "Otro" && detail ? `Otro: ${detail}` : item).join(", ") : (value || ""); }
+function safeCellValue(value) {
+  if (typeof value !== "string") return value;
+  return /^[=+\-@]/.test(value) ? `'${value}` : value;
+}
 
 function doGet(e) {
   try {
