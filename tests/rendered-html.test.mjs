@@ -39,7 +39,17 @@ test("renders a public portal access screen for anonymous visitors", async () =>
   const response = await render("/portal");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Accede con tu correo/);
-  assert.match(html, /Continuar con ChatGPT/);
+  assert.match(html, /Ingresa tu correo/);
+  assert.match(html, /Correo autorizado/);
+  assert.match(html, /Verificar correo y entrar/);
   assert.match(html, /formulario público/);
+  assert.doesNotMatch(html, /Continuar con ChatGPT/);
+});
+
+test("allows an authorized portal user to delete a record", async () => {
+  const source = await readFile(new URL("../app/portal/portal-client.tsx", import.meta.url), "utf8");
+  assert.match(source, /Borrar lead/);
+  assert.match(source, /method: "DELETE"/);
+  assert.match(source, /Esta acción no se puede deshacer/);
+  assert.doesNotMatch(source, /JSON.stringify\(\{ email: currentEmail, id \}\)/);
 });

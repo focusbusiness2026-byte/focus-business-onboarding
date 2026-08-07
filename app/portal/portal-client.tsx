@@ -1,15 +1,135 @@
 "use client";
-import { useEffect, useState } from "react";
+
 import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
 
 type RecordRow = Record<string, string | boolean>;
-type PortalResponse = { ok: boolean; role?: string; records?: RecordRow[]; error?: string; configured?: boolean };
+type PortalResponse = {
+  ok: boolean;
+  role?: string;
+  email?: string;
+  records?: RecordRow[];
+  error?: string;
+};
 
-export default function PortalClient({ user }: { user: { email: string; name: string } }) {
+export default function PortalClient({ user }: { user: { email: string; name: string } | null }) {
+  const [email, setEmail] = useState(user?.email || "");
   const [data, setData] = useState<PortalResponse | null>(null);
   const [selected, setSelected] = useState<RecordRow | null>(null);
-  useEffect(() => { fetch("/api/portal").then((r) => r.json()).then(setData).catch(() => setData({ ok: false, error: "No se pudo cargar la información." })); }, []);
+  const [loading, setLoading] = useState(Boolean(user));
+  const [deletingId, setDeletingId] = useState("");
+  const [error, setError] = useState("");
+
   const records = data?.records ?? [];
-  const selectedFields = selected ? Object.entries(selected).filter(([, value]) => String(value ?? "").trim() !== "") : [];
-  return <main className="portal"><header className="portal-header"><Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link><div className="viewer"><span>{user.name}</span><small>{user.email}</small><a href="/signout-with-chatgpt?return_to=/">Salir</a></div></header><section className="portal-body"><p className="eyebrow">PORTAL DE CONFIGURACIÓN</p><h1>Productoras registradas</h1><p className="intro">Consulta la información enviada y abre cada registro para revisar todos sus datos.</p>{!data && <div className="portal-state">Cargando registros…</div>}{data && !data.ok && <div className="portal-state error">{data.configured === false ? "El portal está protegido, pero falta conectar el lector seguro de Google Sheets." : data.error || "No tienes acceso a este portal."}</div>}{data?.ok && <><div className="portal-stats"><div><b>{records.length}</b><span>Registros recibidos</span></div><div><b>{records.filter((row) => row["Estado"] === "Listo para GHL").length}</b><span>Listos para GHL</span></div><div><b>{data.role}</b><span>Tu rol</span></div></div><div className="record-list">{records.length === 0 ? <div className="portal-state">Aún no hay formularios enviados.<br /><Link className="primary" href="/">Abrir formulario de registro →</Link></div> : records.map((row, index) => <button type="button" className="record record-button" key={`${String(row["ID registro"])}-${index}`} onClick={() => setSelected(row)}><div><p className="record-id">{String(row["ID registro"] || "Nuevo registro")}</p><h2>{String(row["Empresa"] || "Empresa sin nombre")}</h2><p>{String(row["Servicio prioritario"] || "Servicio pendiente")} · {String(row["Público"] || "Público pendiente")}</p></div><div className="record-meta"><span className={row["Estado"] === "Activo" ? "tag active" : "tag"}>{String(row["Estado"] || "Nuevo")}</span><span>{String(row["Email responsable"] || "Sin correo")}</span><span>{String(row["Fecha lanzamiento"] || "Sin fecha")}</span></div></button>)}</div>{selected && <section className="detail-card"><div className="detail-heading"><div><p className="eyebrow">FICHA COMPLETA</p><h2>{String(selected["Empresa"] || "Registro")}</h2></div><button type="button" className="secondary" onClick={() => setSelected(null)}>Cerrar</button></div><div className="detail-section"><div className="detail-grid">{selectedFields.map(([label, value]) => <div key={label}><b>{label}</b><span>{String(value)}</span></div>)}</div></div></section>}</>}</section></main>;
+  const selectedFields = selected
+    ? Object.entries(selected).filter(([, value]) => String(value ?? "").trim() !== "")
+    : [];
+
+  useEffect(() => {
+    if (!user) return;
+    fetch("/api/portal", { method: "POST" })
+      .then(async (response) => {
+        const result = (await response.json()) as PortalResponse;
+        if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo abrir el portal.");
+        setData(result);
+      })
+      .catch((portalError) => setError(portalError instanceof Error ? portalError.message : "No se pudo abrir el portal."))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  function enterPortal(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    window.sessionStorage.setItem("focus-requested-email", email.trim().toLowerCase());
+    window.location.assign(`/signin-with-chatgpt?return_to=${encodeURIComponent("/portal")}`);
+  }
+
+  function changeEmail() {
+    window.sessionStorage.removeItem("focus-requested-email");
+    window.location.assign(`/signout-with-chatgpt?return_to=${encodeURIComponent("/portal")}`);
+  }
+
+  async function deleteRecord() {
+    const id = String(selected?.["ID registro"] || "");
+    if (!id || !window.confirm("¿Quieres borrar este lead? Esta acción no se puede deshacer.")) return;
+    setDeletingId(id);
+    setError("");
+    try {
+      const response = await fetch("/api/portal", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      const result = (await response.json()) as PortalResponse;
+      if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo borrar el registro.");
+      setData((previous) => previous ? {
+        ...previous,
+        records: (previous.records || []).filter((row) => String(row["ID registro"]) !== id),
+      } : previous);
+      setSelected(null);
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : "No se pudo borrar el registro.");
+    } finally {
+      setDeletingId("");
+    }
+  }
+
+  if (!user || !data?.ok) {
+    return (
+      <main className="access">
+        <section className="access-card">
+          <Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link>
+          <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
+          <h1>Ingresa tu correo</h1>
+          <p className="intro">Escribe el correo autorizado en la pestaña Accesos de la hoja de cálculo.</p>
+          <form className="access-form" onSubmit={enterPortal}>
+            <label className="input">
+              <span>Correo autorizado</span>
+              <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nombre@empresa.com" autoComplete="email" required />
+            </label>
+            <button className="primary access-button" type={user ? "button" : "submit"} onClick={user ? changeEmail : undefined} disabled={loading}>
+              {loading ? "Verificando…" : user ? "Cambiar de cuenta →" : "Verificar correo y entrar →"}
+            </button>
+          </form>
+          {error && <p className="access-error" role="alert">{error}</p>}
+          <p className="access-note">¿Necesitas registrar una empresa? <Link href="/">Abre el formulario público.</Link></p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main className="portal">
+      <header className="portal-header">
+        <Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link>
+          <div className="viewer"><span>{user.name || data.role || "Usuario autorizado"}</span><small>{user.email}</small><button className="link-button" type="button" onClick={changeEmail}>Cambiar correo</button></div>
+      </header>
+      <section className="portal-body">
+        <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
+        <h1>Empresas registradas</h1>
+        <p className="intro">Consulta la información recibida y abre un registro para ver todos sus datos.</p>
+        <div className="portal-stats">
+          <div><b>{records.length}</b><span>Registros recibidos</span></div>
+          <div><b>{records.filter((row) => row["Estado"] === "Listo para GHL").length}</b><span>Listos para GoHighLevel</span></div>
+          <div><b>{data.role}</b><span>Tu acceso</span></div>
+        </div>
+        <div className="record-list">
+          {records.length === 0 ? <div className="portal-state">Todavía no hay formularios enviados.<br /><Link className="primary" href="/">Abrir formulario de registro →</Link></div> : records.map((row, index) => (
+            <button type="button" className="record record-button" key={`${String(row["ID registro"])}-${index}`} onClick={() => setSelected(row)}>
+              <div><p className="record-id">{String(row["ID registro"] || "Nuevo registro")}</p><h2>{String(row["Empresa"] || "Empresa sin nombre")}</h2><p>{String(row["Servicio prioritario"] || "Servicio pendiente")} · {String(row["Público"] || "Público pendiente")}</p></div>
+              <div className="record-meta"><span className={row["Estado"] === "Activo" ? "tag active" : "tag"}>{String(row["Estado"] || "Nuevo")}</span><span>{String(row["Email responsable"] || "Sin correo")}</span><span>{String(row["Fecha lanzamiento"] || "Sin fecha")}</span></div>
+            </button>
+          ))}
+        </div>
+        {selected && <section className="detail-card">
+          <div className="detail-heading">
+            <div><p className="eyebrow">DATOS COMPLETOS</p><h2>{String(selected["Empresa"] || "Registro")}</h2></div>
+            <div className="detail-actions"><button type="button" className="secondary" onClick={() => setSelected(null)}>Cerrar</button><button type="button" className="danger" onClick={deleteRecord} disabled={Boolean(deletingId)}>{deletingId ? "Borrando…" : "Borrar lead"}</button></div>
+          </div>
+          {error && <p className="delete-error" role="alert">{error}</p>}
+          <div className="detail-section"><div className="detail-grid">{selectedFields.map(([label, value]) => <div key={label}><b>{label}</b><span>{String(value)}</span></div>)}</div></div>
+        </section>}
+      </section>
+    </main>
+  );
 }

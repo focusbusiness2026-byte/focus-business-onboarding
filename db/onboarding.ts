@@ -57,3 +57,9 @@ export async function listSubmissions(): Promise<StoredSubmission[]> {
     payload: JSON.parse(row.payload_json) as Record<string, unknown>,
   }));
 }
+
+export async function deleteSubmission(id: string) {
+  const db = await database();
+  const result = await db.prepare("DELETE FROM onboarding_submissions WHERE id = ?").bind(id).run();
+  return Number(result.meta?.changes || 0) > 0;
+}
