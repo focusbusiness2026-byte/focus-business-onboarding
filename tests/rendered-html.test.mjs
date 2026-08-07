@@ -72,3 +72,19 @@ test("keeps the mobile navigation and long choices inside the viewport", async (
   assert.match(css, /grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css, /overflow-x:hidden/);
 });
+
+test("groups portal answers like the form and makes every response copyable", async () => {
+  const client = await readFile(new URL("../app/portal/portal-client.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(client, /Empresa e identidad de marca/);
+  assert.match(client, /Oferta y cliente ideal/);
+  assert.match(client, /Captación y proceso comercial/);
+  assert.match(client, /Equipo, calendarios y comunicación/);
+  assert.match(client, /Automatizaciones e integraciones/);
+  assert.match(client, /Revisión y lanzamiento/);
+  assert.match(client, /navigator\.clipboard\.writeText/);
+  assert.match(client, /aria-label={`Copiar \$\{label\}`}/);
+  assert.match(client, /No se registraron respuestas en este bloque/);
+  assert.match(css, /\.portal \{ display:block/);
+  assert.match(css, /\.detail-fields \{ display:grid/);
+});
