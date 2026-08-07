@@ -35,6 +35,21 @@ test("keeps optional choices clear and removes newsletter", async () => {
   assert.doesNotMatch(source, /Newsletter|Enlace al logo \(opcional\)|label="Tono de marca"/);
 });
 
+test("identifies invalid fields and navigates directly to each error", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const css = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(source, /className="validation-summary"/);
+  assert.match(source, /scrollIntoView\(\{ behavior: "smooth", block: "center" \}\)/);
+  assert.match(source, /Escribe un correo válido, por ejemplo nombre@empresa\.com\./);
+  assert.match(source, /Usa un color hexadecimal de 6 caracteres/);
+  assert.match(source, /aria-invalid=/);
+  assert.match(source, /noValidate/);
+  assert.doesNotMatch(source, /onClickCapture/);
+  assert.match(css, /\.field-error input/);
+  assert.match(css, /\.field-error-message/);
+  assert.match(css, /\.validation-summary/);
+});
+
 test("renders a public portal access screen for anonymous visitors", async () => {
   const response = await render("/portal");
   assert.equal(response.status, 200);
