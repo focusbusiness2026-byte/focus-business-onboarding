@@ -11,12 +11,23 @@ const ACCESS_TAB = "Accesos";
 function doPost(e) {
   const data = JSON.parse(e.postData.contents || "{}");
   if (!isPortalToken(data._focusToken)) return json({ ok: false, error: "No autorizado" });
+  if (data.action === "delete") return deleteRecord(data.id);
   const sheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ONBOARDING_TAB);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const values = headers.map((header) => valueFor(header, data));
   sheet.appendRow(values);
   return ContentService.createTextOutput(JSON.stringify({ ok: true, row: sheet.getLastRow() }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function deleteRecord(id) {
+  const sheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ONBOARDING_TAB);
+  const values = sheet.getDataRange().getValues();
+  const idIndex = values[0].indexOf("ID registro");
+  const rowIndex = values.findIndex((row, index) => index > 0 && String(row[idIndex]) === String(id));
+  if (rowIndex < 1) return json({ ok: false, error: "El registro ya no existe" });
+  sheet.deleteRow(rowIndex + 1);
+  return json({ ok: true, id: String(id) });
 }
 
 function valueFor(header, data) {
