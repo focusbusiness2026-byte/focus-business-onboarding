@@ -60,7 +60,7 @@ export async function DELETE(request: Request) {
       const response = await fetch(sheetUrl, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ action: "delete", id, _focusToken: token }),
+        body: JSON.stringify({ action: "delete", id, email: access.email, _focusToken: token }),
       });
       const payload = await response.json() as { ok?: boolean; error?: string };
       if (!response.ok || payload.ok !== true) {
