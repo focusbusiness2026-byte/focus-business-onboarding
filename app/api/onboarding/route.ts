@@ -7,6 +7,67 @@ type SheetsWriteResponse = {
   error?: string;
 };
 
+class SubmissionValidationError extends Error {}
+
+const requiredTextFields = [
+  "companyName", "legalName", "ownerName", "businessEmail", "contactPhone", "website",
+  "activity", "location", "legalAddress", "legalCity", "legalCountry", "timezone",
+  "primaryLanguage", "teamSize", "description", "billingLegalName", "billingTaxId",
+  "billingAddress", "billingEmail", "mainService", "ticket", "priceModel", "monthlyCapacity",
+  "targetCity", "targetRegion", "idealCompanySize", "idealProfileDetail", "decisionMaker",
+  "minimumBudget", "prospectExclusions", "prospectPreferences", "additionalLeadQuestions",
+  "responseTime", "assignment", "salesCycle", "qualification", "contactName", "contactRole",
+  "contactEmail", "initialTeamRoles", "bookingName", "meetingDuration", "availability",
+  "schedule", "pronoun", "adAccess", "adMeeting",
+  "exceptions", "launchDate", "approvalOwner",
+] as const;
+
+const requiredListFields = [
+  "services", "audience", "sectors", "geographies", "targetCountries", "targetClientTypes",
+  "objectives", "channels", "leadFields", "toolsInUse", "toolsToConnect", "workflowAutomations",
+  "whatsappAutomations", "emailAutomations", "adPlatforms",
+] as const;
+
+function nonEmptyText(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function containsSecretLikeValue(value: unknown): boolean {
+  if (typeof value === "string") {
+    return /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/i.test(value)
+      || /\b(?:sk|rk|pk)-[A-Za-z0-9_-]{16,}\b/.test(value)
+      || /\b(?:password|contrase(?:ñ|n)a|api[_ -]?key|token)\s*[:=]\s*\S{8,}/i.test(value);
+  }
+  if (Array.isArray(value)) return value.some(containsSecretLikeValue);
+  if (value && typeof value === "object") return Object.values(value).some(containsSecretLikeValue);
+  return false;
+}
+
+function validateSubmission(payload: Record<string, unknown>) {
+  const missing: string[] = requiredTextFields.filter((field) => !nonEmptyText(payload[field]));
+  missing.push(...requiredListFields.filter((field) => !Array.isArray(payload[field]) || payload[field].length === 0));
+  if (missing.length) {
+    throw new SubmissionValidationError(`Faltan campos obligatorios: ${missing.join(", ")}.`);
+  }
+  for (const field of ["businessEmail", "billingEmail", "contactEmail"] as const) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload[field]))) {
+      throw new SubmissionValidationError(`El campo ${field} no contiene un correo válido.`);
+    }
+  }
+  try {
+    const website = new URL(String(payload.website));
+    if (!['http:', 'https:'].includes(website.protocol)) throw new Error("invalid");
+  } catch {
+    throw new SubmissionValidationError("La web pública debe ser una URL HTTP(S) válida.");
+  }
+  if (payload.accuracy !== true || payload.terms !== true || payload.ghlPreparationAuthorization !== true) {
+    throw new SubmissionValidationError("Faltan las confirmaciones y autorizaciones obligatorias.");
+  }
+  if (containsSecretLikeValue(payload)) {
+    throw new SubmissionValidationError("El formulario no admite contraseñas, tokens, claves API ni claves privadas.");
+  }
+}
+
 async function saveToGoogleSheets(payload: Record<string, unknown>) {
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   const token = process.env.FOCUS_PORTAL_TOKEN;
@@ -32,19 +93,40 @@ async function saveToGoogleSheets(payload: Record<string, unknown>) {
   return result;
 }
 
+async function notifyProspection(onboardingId: string) {
+  const url = process.env.PROSPECTION_TRIGGER_URL;
+  const token = process.env.PROSPECTION_TRIGGER_TOKEN;
+  if (!url || !token || !onboardingId) return { configured: false, notified: false };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ onboarding_id: onboardingId }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return { configured: true, notified: response.ok };
+  } catch {
+    return { configured: true, notified: false };
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const payload = await request.json() as Record<string, unknown>;
+    validateSubmission(payload);
     const sheets = await saveToGoogleSheets(payload);
+    const prospection = await notifyProspection(String(sheets.id || ""));
     return NextResponse.json({
       ok: true,
       saved: { id: sheets.id, row: sheets.row, submittedAt: payload.submittedAt },
       sheets: { configured: true },
+      prospection,
     });
   } catch (error) {
+    const validationError = error instanceof SubmissionValidationError;
     return NextResponse.json(
       { ok: false, error: error instanceof Error ? error.message : "No se pudo guardar el registro en Google Sheets." },
-      { status: 502 },
+      { status: validationError ? 400 : 502 },
     );
   }
 }

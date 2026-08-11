@@ -121,6 +121,9 @@ body { overflow-x:hidden }
 .validation-summary button span { font-size:13px; font-weight:800 }
 .validation-summary button small { margin-top:3px; color:#ffafb7; font-size:12px; line-height:1.4 }
 .validation-summary button:hover,.validation-summary button:focus-visible { border-color:#ef7783; background:#3d1d25; outline:3px solid #d8586524 }
+.purpose-note { margin:18px 0 24px; padding:16px 18px; border:1px solid #6f5d2a; border-radius:12px; background:rgba(212,175,55,.08); color:#cbd3df }
+.purpose-note strong { color:#e7c458 }
+.purpose-note p { margin:7px 0 0; line-height:1.65 }
 
 @media(max-width:760px){
   .portal-header { align-items:flex-start; flex-direction:column; min-height:0; padding:20px 18px; gap:18px }

@@ -21,15 +21,15 @@ const detailGroups = [
   },
   {
     step: "01",
-    title: "Empresa e identidad de marca",
-    description: "Datos generales, recursos visuales, colores y tipografías.",
-    fields: ["Empresa", "Razón social", "Web", "Actividad", "Ciudad / país", "Tamaño equipo", "Descripción", "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos"],
+    title: "Empresa y preparación de subcuenta",
+    description: "Identidad legal/comercial y datos operativos para una creación posterior aprobada.",
+    fields: ["Empresa", "Razón social", "Propietario / representante", "Email corporativo", "Web", "Actividad", "Ciudad / país", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Tamaño equipo", "Descripción", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos"],
   },
   {
     step: "02",
-    title: "Oferta y cliente ideal",
-    description: "Servicios, precios, público, sectores y mercados prioritarios.",
-    fields: ["Servicio prioritario", "Ticket medio", "Modelo de precio", "Servicios", "Público", "Sectores", "Mercados", "Tamaño empresa ideal", "Decisor habitual", "Presupuesto mínimo"],
+    title: "Oferta y configuración de prospección",
+    description: "Servicios, sectores, zonas, perfil ideal, presupuesto, exclusiones y criterios.",
+    fields: ["Servicio prioritario", "Ticket medio", "Modelo de precio", "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Servicios", "Público", "Sectores", "Mercados", "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Tamaño empresa ideal", "Perfil ideal detallado", "Decisor habitual", "Presupuesto mínimo", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección"],
   },
   {
     step: "03",
@@ -39,9 +39,9 @@ const detailGroups = [
   },
   {
     step: "04",
-    title: "Equipo, calendarios y comunicación",
-    description: "Responsable, reuniones, disponibilidad y tono de comunicación.",
-    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
+    title: "Equipo, acceso futuro y comunicación",
+    description: "Contacto, roles iniciales y personalización recomendada sin credenciales.",
+    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Equipo y roles iniciales", "Redes oficiales", "Dominio/subdominio deseado", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
   },
   {
     step: "05",
@@ -53,7 +53,7 @@ const detailGroups = [
     step: "06",
     title: "Revisión y lanzamiento",
     description: "Confirmaciones, fecha objetivo y persona responsable de aprobar.",
-    fields: ["Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización"],
+    fields: ["Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Autorización preparación GHL", "Preparación subcuenta GHL", "Validación subcuenta GHL"],
   },
   {
     step: "INT",

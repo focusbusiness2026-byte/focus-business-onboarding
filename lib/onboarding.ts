@@ -1,4 +1,9 @@
-import type { StoredSubmission } from "../db/onboarding";
+type StoredSubmission = {
+  id: string;
+  submittedAt: string;
+  status: string;
+  payload: Record<string, unknown>;
+};
 
 export const sheetHeaders = [
   "ID registro", "Fecha envío", "Estado", "Empresa", "Razón social", "Web", "Actividad", "Ciudad / país", "Tamaño equipo", "Descripción", "Color marca", "Logo URL", "Tono marca",
@@ -8,6 +13,9 @@ export const sheetHeaders = [
   "Automatizaciones", "Integraciones", "Cuenta GoHighLevel", "Google Sheets", "Excepciones", "Fecha lanzamiento", "Responsable aprobación", "Datos correctos", "Autorización", "Subcuenta GHL", "Config. técnica URL", "Notas internas",
   "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos", "Preguntas adicionales", "Herramientas actuales", "Herramientas a conectar",
   "Automatizaciones workflow", "Automatizaciones WhatsApp", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios",
+  "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Perfil ideal detallado", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección",
+  "Propietario / representante", "Email corporativo", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Redes oficiales", "Dominio/subdominio deseado", "Equipo y roles iniciales", "Autorización preparación GHL", "Preparación subcuenta GHL", "Validación subcuenta GHL",
+  "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia",
 ] as const;
 
 function text(value: unknown) {
@@ -32,6 +40,9 @@ export function toSheetRecord(row: StoredSubmission): Record<string, string> {
     "Automatizaciones": text(data.automations), "Integraciones": text(data.integrations), "Cuenta GoHighLevel": text(data.existingGhl), "Google Sheets": "Sincronización web activa", "Excepciones": text(data.exceptions), "Fecha lanzamiento": text(data.launchDate), "Responsable aprobación": text(data.approvalOwner), "Datos correctos": text(Boolean(data.accuracy)), "Autorización": text(Boolean(data.terms)), "Subcuenta GHL": "", "Config. técnica URL": "", "Notas internas": "",
     "Recursos Drive": text(data.driveAssetsUrl), "Color corporativo primario": text(data.brandPrimaryColor || data.brandColor), "Color corporativo secundario": text(data.brandSecondaryColor), "Tipografía títulos": text(data.headingFont), "Tipografía textos": text(data.bodyFont), "Preguntas adicionales": text(data.additionalLeadQuestions), "Herramientas actuales": text(data.toolsInUse), "Herramientas a conectar": text(data.toolsToConnect),
     "Automatizaciones workflow": text(data.workflowAutomations), "Automatizaciones WhatsApp": text(data.whatsappAutomations), "Automatizaciones email": text(data.emailAutomations), "Plataformas anuncios": text(data.adPlatforms), "Acceso anuncios": text(data.adAccess), "Reunión anuncios": text(data.adMeeting),
+    "Ciudad objetivo": text(data.targetCity), "Región objetivo": text(data.targetRegion), "Países objetivo": selectionWithOther(data.targetCountries, data.targetCountriesOther), "Tipos de cliente objetivo": selectionWithOther(data.targetClientTypes, data.targetClientTypesOther), "Perfil ideal detallado": text(data.idealProfileDetail), "Exclusiones de prospección": text(data.prospectExclusions), "Preferencias de prospección": text(data.prospectPreferences), "Preparación prospección": "Configuración lista para sincronizar",
+    "Propietario / representante": text(data.ownerName), "Email corporativo": text(data.businessEmail), "Dirección legal": text(data.legalAddress), "Ciudad legal": text(data.legalCity), "País legal": text(data.legalCountry), "Zona horaria": text(data.timezone), "Idioma principal": text(data.primaryLanguage), "Nombre facturación": text(data.billingLegalName), "ID fiscal empresarial": text(data.billingTaxId), "Dirección facturación": text(data.billingAddress), "Email facturación": text(data.billingEmail), "Redes oficiales": text(data.companySocialLinks), "Dominio/subdominio deseado": text(data.desiredDomain), "Equipo y roles iniciales": text(data.initialTeamRoles), "Autorización preparación GHL": text(Boolean(data.ghlPreparationAuthorization)), "Preparación subcuenta GHL": "Lista para revisión; no creada", "Validación subcuenta GHL": "Pendiente de aprobación",
+    "Capacidad mensual": text(data.monthlyCapacity), "Casos de éxito / portafolio": text(data.portfolioHighlights), "Empresas de referencia": text(data.referenceCompanies),
   };
 }
 
