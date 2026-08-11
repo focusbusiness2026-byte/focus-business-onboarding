@@ -35,7 +35,7 @@ const detailGroups = [
     step: "03",
     title: "Captación y proceso comercial",
     description: "Canales, información del contacto y reglas de seguimiento.",
-    fields: ["Objetivos", "Canales", "Campos del lead", "Preguntas adicionales", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación"],
+    fields: ["Objetivos", "Canales", "Campos del lead", "Preguntas adicionales", "Responsable copy landing", "Copy / referencias / CTA landing", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación"],
   },
   {
     step: "04",

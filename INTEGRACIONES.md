@@ -30,9 +30,9 @@ El archivo fuente es `google-apps-script/Code.gs`. Debe publicarse como aplicaci
 
 - Ejecutar como el propietario de la hoja.
 - Permitir acceso a cualquier usuario; el token protege las lecturas y escrituras.
-- Mantener en la fila 1 de `Onboarding` los 94 encabezados definidos por `ONBOARDING_HEADERS`.
+- Mantener en la fila 1 de `Onboarding` los 96 encabezados definidos por `ONBOARDING_HEADERS`.
 
-Los 28 encabezados nuevos se añaden después de los 66 existentes para preservar las filas actuales. Incluyen segmentación de prospección, capacidad, casos/portafolio, empresas de referencia, datos operativos de la futura subcuenta y marcas separadas de preparación/validación. `ensureOnboardingHeaders` añade automáticamente solo las columnas finales que falten. Si detecta otro orden, crea una pestaña de respaldo antes de reorganizar por nombre. También puede ejecutarse manualmente `migrateOnboardingHeaders()` después de revisar la hoja. Esta entrega local no modifica la hoja ni vuelve a implementar Apps Script.
+Los 30 encabezados nuevos se añaden después de los 66 existentes para preservar las filas actuales. Incluyen segmentación de prospección, capacidad, casos/portafolio, empresas de referencia, copy de landings, datos operativos de la futura subcuenta y marcas separadas de preparación/validación. `ensureOnboardingHeaders` añade automáticamente solo las columnas finales que falten. Si detecta otro orden, crea una pestaña de respaldo antes de reorganizar por nombre. También puede ejecutarse manualmente `migrateOnboardingHeaders()` después de revisar la hoja. Esta entrega local no modifica la hoja ni vuelve a implementar Apps Script.
 
 ## Acceso al portal
 
@@ -41,6 +41,6 @@ Para conceder o revocar acceso, añadir o actualizar un correo en la pestaña `A
 ## Activación pendiente de autorización
 
 1. Revisar y publicar la nueva versión de `google-apps-script/Code.gs`.
-2. Ejecutar `migrateOnboardingHeaders()` y comprobar 94 columnas sin borrar la pestaña de respaldo.
+2. Ejecutar `migrateOnboardingHeaders()` y comprobar 96 columnas sin borrar la pestaña de respaldo.
 3. Publicar el formulario con `GOOGLE_SHEETS_WEBHOOK_URL`, `GOOGLE_SHEETS_PORTAL_URL`, `FOCUS_PORTAL_TOKEN`, `PROSPECTION_TRIGGER_URL` y `PROSPECTION_TRIGGER_TOKEN` como secretos del servidor.
 4. No introducir contraseñas, claves API ni tokens en el formulario o la hoja.

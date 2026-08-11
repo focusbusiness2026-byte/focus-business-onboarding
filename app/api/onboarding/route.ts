@@ -49,6 +49,17 @@ function validateSubmission(payload: Record<string, unknown>) {
   if (missing.length) {
     throw new SubmissionValidationError(`Faltan campos obligatorios: ${missing.join(", ")}.`);
   }
+  if ((payload.sectors as unknown[]).length > 3) {
+    throw new SubmissionValidationError("Puedes seleccionar un máximo de 3 sectores prioritarios.");
+  }
+  if ((payload.channels as unknown[]).includes("Landing pages")) {
+    if (!nonEmptyText(payload.landingCopyOwner) || !nonEmptyText(payload.landingCopyBrief)) {
+      throw new SubmissionValidationError("Las landings requieren responsable del copy y copy o referencias con CTA.");
+    }
+    if (!["Cliente", "Focus Business", "En conjunto"].includes(String(payload.landingCopyOwner))) {
+      throw new SubmissionValidationError("El responsable del copy de las landings no es válido.");
+    }
+  }
   for (const field of ["businessEmail", "billingEmail", "contactEmail"] as const) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload[field]))) {
       throw new SubmissionValidationError(`El campo ${field} no contiene un correo válido.`);

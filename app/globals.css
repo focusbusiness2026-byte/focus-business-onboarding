@@ -124,6 +124,10 @@ body { overflow-x:hidden }
 .purpose-note { margin:18px 0 24px; padding:16px 18px; border:1px solid #6f5d2a; border-radius:12px; background:rgba(212,175,55,.08); color:#cbd3df }
 .purpose-note strong { color:#e7c458 }
 .purpose-note p { margin:7px 0 0; line-height:1.65 }
+.selection-limit { margin:-2px 0 10px; color:#9eacbd; font-size:12px }
+.cost-notice { display:flex; align-items:flex-start; gap:10px; margin:12px 0 22px; padding:12px 14px; border:1px solid #8b6f2e; border-radius:9px; background:rgba(212,175,55,.08); color:#cbd3df; font-size:13px; line-height:1.5 }
+.cost-notice strong { flex:0 0 auto; padding:3px 8px; border-radius:12px; background:#d9af43; color:#142033; font-size:11px; text-transform:uppercase; letter-spacing:.5px }
+.landing-copy .grid { align-items:start }
 
 @media(max-width:760px){
   .portal-header { align-items:flex-start; flex-direction:column; min-height:0; padding:20px 18px; gap:18px }

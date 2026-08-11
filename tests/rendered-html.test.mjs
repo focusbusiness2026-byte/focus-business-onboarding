@@ -43,6 +43,11 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(page, /Capacidad mensual para nuevos proyectos/);
   assert.match(page, /Casos de éxito o portafolio/);
   assert.match(page, /Empresas de referencia/);
+  assert.match(page, /Puedes seleccionar un máximo de 3 sectores prioritarios/);
+  assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
+  assert.match(page, /Landings · copy y llamada a la acción/);
+  assert.match(page, /Coste adicional/);
+  assert.match(page, /mediante OAuth cuando el proveedor lo permita/);
   assert.match(page, /Información · ¿por qué te lo pedimos\?/);
   assert.match(page, /No escribas contraseñas, claves API, datos bancarios ni códigos de acceso/);
   assert.match(page, /Requerido para preparar la subcuenta/);
@@ -51,6 +56,8 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(mapping, /Lista para revisión; no creada/);
   assert.match(mapping, /Pendiente de aprobación/);
   assert.match(mapping, /"Capacidad mensual"/);
+  assert.match(mapping, /"Responsable copy landing"/);
+  assert.match(mapping, /"Copy \/ referencias \/ CTA landing"/);
 });
 
 test("keeps optional choices clear and removes newsletter", async () => {
@@ -149,7 +156,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
     "legalAddress","legalCity","legalCountry","timezone","primaryLanguage","teamSize","description",
     "billingLegalName","billingTaxId","billingAddress","billingEmail","mainService","ticket","priceModel",
     "monthlyCapacity","targetCity","targetRegion","idealCompanySize","idealProfileDetail","decisionMaker",
-    "minimumBudget","prospectExclusions","prospectPreferences","additionalLeadQuestions","responseTime",
+    "minimumBudget","prospectExclusions","prospectPreferences","additionalLeadQuestions","landingCopyOwner","landingCopyBrief","responseTime",
     "assignment","salesCycle","qualification","contactName","contactRole","contactEmail","initialTeamRoles",
     "bookingName","meetingDuration","availability","schedule","pronoun","adAccess","adMeeting","exceptions",
     "launchDate","approvalOwner",
@@ -160,11 +167,23 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
     website: "https://example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true,
   });
   for (const field of ["services","audience","sectors","geographies","targetCountries","targetClientTypes","objectives","channels","leadFields","toolsInUse","toolsToConnect","workflowAutomations","whatsappAutomations","emailAutomations","adPlatforms"]) payload[field] = ["Opción de prueba"];
+  payload.channels = ["Landing pages"];
+  payload.landingCopyOwner = "En conjunto";
+  payload.landingCopyBrief = "Referencia de campaña y CTA: Solicitar presupuesto";
+  payload.sectors = ["Tecnología", "Salud", "Industria"];
   const response = await requestApp(new Request("http://localhost/api/onboarding", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
   }));
   assert.equal(response.status, 502);
   assert.match((await response.json()).error, /Google Sheets no está configurado/);
+
+  payload.sectors = ["Tecnología", "Salud", "Industria", "Educación"];
+  const sectorLimitResponse = await requestApp(new Request("http://localhost/api/onboarding", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+  }));
+  assert.equal(sectorLimitResponse.status, 400);
+  assert.match((await sectorLimitResponse.json()).error, /máximo de 3 sectores prioritarios/);
+  payload.sectors = ["Tecnología", "Salud", "Industria"];
 
   payload.prospectPreferences = "api_key=1234567890abcdef";
   const secretResponse = await requestApp(new Request("http://localhost/api/onboarding", {

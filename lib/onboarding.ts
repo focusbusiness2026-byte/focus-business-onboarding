@@ -15,7 +15,7 @@ export const sheetHeaders = [
   "Automatizaciones workflow", "Automatizaciones WhatsApp", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios",
   "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Perfil ideal detallado", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección",
   "Propietario / representante", "Email corporativo", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Redes oficiales", "Dominio/subdominio deseado", "Equipo y roles iniciales", "Autorización preparación GHL", "Preparación subcuenta GHL", "Validación subcuenta GHL",
-  "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia",
+  "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Responsable copy landing", "Copy / referencias / CTA landing",
 ] as const;
 
 function text(value: unknown) {
@@ -42,7 +42,7 @@ export function toSheetRecord(row: StoredSubmission): Record<string, string> {
     "Automatizaciones workflow": text(data.workflowAutomations), "Automatizaciones WhatsApp": text(data.whatsappAutomations), "Automatizaciones email": text(data.emailAutomations), "Plataformas anuncios": text(data.adPlatforms), "Acceso anuncios": text(data.adAccess), "Reunión anuncios": text(data.adMeeting),
     "Ciudad objetivo": text(data.targetCity), "Región objetivo": text(data.targetRegion), "Países objetivo": selectionWithOther(data.targetCountries, data.targetCountriesOther), "Tipos de cliente objetivo": selectionWithOther(data.targetClientTypes, data.targetClientTypesOther), "Perfil ideal detallado": text(data.idealProfileDetail), "Exclusiones de prospección": text(data.prospectExclusions), "Preferencias de prospección": text(data.prospectPreferences), "Preparación prospección": "Configuración lista para sincronizar",
     "Propietario / representante": text(data.ownerName), "Email corporativo": text(data.businessEmail), "Dirección legal": text(data.legalAddress), "Ciudad legal": text(data.legalCity), "País legal": text(data.legalCountry), "Zona horaria": text(data.timezone), "Idioma principal": text(data.primaryLanguage), "Nombre facturación": text(data.billingLegalName), "ID fiscal empresarial": text(data.billingTaxId), "Dirección facturación": text(data.billingAddress), "Email facturación": text(data.billingEmail), "Redes oficiales": text(data.companySocialLinks), "Dominio/subdominio deseado": text(data.desiredDomain), "Equipo y roles iniciales": text(data.initialTeamRoles), "Autorización preparación GHL": text(Boolean(data.ghlPreparationAuthorization)), "Preparación subcuenta GHL": "Lista para revisión; no creada", "Validación subcuenta GHL": "Pendiente de aprobación",
-    "Capacidad mensual": text(data.monthlyCapacity), "Casos de éxito / portafolio": text(data.portfolioHighlights), "Empresas de referencia": text(data.referenceCompanies),
+    "Capacidad mensual": text(data.monthlyCapacity), "Casos de éxito / portafolio": text(data.portfolioHighlights), "Empresas de referencia": text(data.referenceCompanies), "Responsable copy landing": text(data.landingCopyOwner), "Copy / referencias / CTA landing": text(data.landingCopyBrief),
   };
 }
 
