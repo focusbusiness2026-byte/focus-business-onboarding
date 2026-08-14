@@ -96,7 +96,8 @@ test("supports searchable typography, dependent regions and configurable lead qu
   assert.match(source, /key === "targetCountries"/);
   assert.match(source, /Selección múltiple/);
   assert.match(source, /Añade al menos dos opciones, una por línea/);
-  assert.match(source, /window\.scrollTo\(\{ top: 0, behavior: "smooth" \}\)/);
+  assert.match(source, /document\.documentElement\.scrollTop = 0/);
+  assert.match(source, /window\.scrollTo\(\{ top: 0, left: 0, behavior: "auto" \}\)/);
   assert.match(mapping, /allLeadQuestions\(data\)/);
   assert.match(appsScript, /allLeadQuestions\(data\)/);
 });

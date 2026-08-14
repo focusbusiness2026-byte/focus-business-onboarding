@@ -330,11 +330,16 @@ export default function Home() {
     setStep(next);
     setHelpOpen(false);
     setFieldErrors({});
-    window.requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(".content")?.scrollIntoView({ behavior: "smooth", block: "start" });
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    });
   }, []);
+  useEffect(() => {
+    if (!draftReady) return;
+    const frame = window.requestAnimationFrame(() => {
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step, draftReady]);
   const clearFieldError = useCallback((key: string) => setFieldErrors((previous) => {
     if (!previous[key]) return previous;
     const next = { ...previous };
