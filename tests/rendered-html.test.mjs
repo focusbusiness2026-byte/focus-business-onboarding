@@ -47,6 +47,11 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
   assert.match(page, /Landings · copy y llamada a la acción/);
   assert.match(page, /Coste adicional/);
+  assert.match(page, /WhatsApp Business oficial y número telefónico/);
+  assert.match(page, /Comprar número nuevo de Estados Unidos/);
+  assert.match(page, /Llamadas desde GoHighLevel y grabación/);
+  assert.match(page, /Configurar y verificar un subdominio/);
+  assert.match(page, /Campos informativos opcionales/);
   assert.match(page, /mediante OAuth cuando el proveedor lo permita/);
   assert.match(page, /Información · ¿por qué te lo pedimos\?/);
   assert.match(page, /No escribas contraseñas, claves API, datos bancarios ni códigos de acceso/);
@@ -137,12 +142,18 @@ test("keeps the legacy D1 export disabled", async () => {
   assert.match((await response.json()).error, /Google Sheets es la única fuente operativa/);
 });
 
-test("rejects an incomplete submission before Google Sheets", async () => {
+test("accepts optional informational fields but requires final authorizations", async () => {
   const incomplete = await requestApp(new Request("http://localhost/api/onboarding", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ companyName: "Demo" }),
   }));
   assert.equal(incomplete.status, 400);
-  assert.match((await incomplete.json()).error, /Faltan campos obligatorios/);
+  assert.match((await incomplete.json()).error, /confirmaciones y autorizaciones obligatorias/);
+
+  const authorizedMinimal = await requestApp(new Request("http://localhost/api/onboarding", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accuracy: true, terms: true, ghlPreparationAuthorization: true }),
+  }));
+  assert.equal(authorizedMinimal.status, 502);
+  assert.match((await authorizedMinimal.json()).error, /Google Sheets no está configurado/);
 
   const route = await readFile(new URL("../app/api/onboarding/route.ts", import.meta.url), "utf8");
   assert.match(route, /containsSecretLikeValue/);

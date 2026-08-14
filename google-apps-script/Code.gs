@@ -18,6 +18,9 @@ const ONBOARDING_HEADERS = [
   "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Perfil ideal detallado", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección",
   "Propietario / representante", "Email corporativo", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Redes oficiales", "Dominio/subdominio deseado", "Equipo y roles iniciales", "Autorización preparación GHL", "Preparación subcuenta GHL", "Validación subcuenta GHL",
   "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Responsable copy landing", "Copy / referencias / CTA landing",
+  "Incorporar WhatsApp", "Estado Meta Business", "Número WhatsApp", "Zona número EE. UU.", "Número visible WhatsApp", "Confirmación costes WhatsApp",
+  "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación",
+  "Configuración subdominio", "Uso del subdominio", "Subdominio preferido", "Subdominio alternativo", "Propiedad del dominio", "Estado acceso DNS", "Verificación subdominio",
 ];
 
 function doPost(e) {
@@ -94,6 +97,9 @@ function valueFor(header, data) {
     "Redes oficiales": () => data.companySocialLinks, "Dominio/subdominio deseado": () => data.desiredDomain, "Equipo y roles iniciales": () => data.initialTeamRoles,
     "Autorización preparación GHL": () => Boolean(data.ghlPreparationAuthorization), "Preparación subcuenta GHL": () => "Lista para revisión; no creada", "Validación subcuenta GHL": () => "Pendiente de aprobación",
     "Capacidad mensual": () => data.monthlyCapacity, "Casos de éxito / portafolio": () => data.portfolioHighlights, "Empresas de referencia": () => data.referenceCompanies, "Responsable copy landing": () => data.landingCopyOwner, "Copy / referencias / CTA landing": () => data.landingCopyBrief,
+    "Incorporar WhatsApp": () => data.whatsappSetup, "Estado Meta Business": () => data.whatsappBusinessAccount, "Número WhatsApp": () => data.whatsappNumberChoice, "Zona número EE. UU.": () => data.whatsappUsNumberArea, "Número visible WhatsApp": () => data.whatsappDisplayNumber, "Confirmación costes WhatsApp": () => data.whatsappCostAcceptance,
+    "Uso de llamadas": () => data.callingSetup, "Número para llamadas": () => data.callingNumberChoice, "Número visible llamadas": () => data.callingDisplayNumber, "Grabación de llamadas": () => data.callRecording, "Confirmación normativa grabación": () => data.callRecordingNotice,
+    "Configuración subdominio": () => data.subdomainSetup, "Uso del subdominio": () => data.subdomainPurpose, "Subdominio preferido": () => data.subdomainPreferred, "Subdominio alternativo": () => data.subdomainAlternative, "Propiedad del dominio": () => data.subdomainOwnership, "Estado acceso DNS": () => data.subdomainDnsStatus, "Verificación subdominio": () => data.subdomainVerification,
   };
   return fields[header] ? (fields[header]() || "") : "";
 }

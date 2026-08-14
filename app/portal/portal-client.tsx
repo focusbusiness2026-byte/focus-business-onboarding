@@ -41,13 +41,13 @@ const detailGroups = [
     step: "04",
     title: "Equipo, acceso futuro y comunicación",
     description: "Contacto, roles iniciales y personalización recomendada sin credenciales.",
-    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Equipo y roles iniciales", "Redes oficiales", "Dominio/subdominio deseado", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
+    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Equipo y roles iniciales", "Redes oficiales", "Dominio/subdominio deseado", "Configuración subdominio", "Uso del subdominio", "Subdominio preferido", "Subdominio alternativo", "Propiedad del dominio", "Estado acceso DNS", "Verificación subdominio", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
   },
   {
     step: "05",
     title: "Automatizaciones e integraciones",
     description: "Herramientas, flujos automáticos, mensajes y anuncios.",
-    fields: ["Herramientas actuales", "Herramientas a conectar", "Automatizaciones workflow", "Automatizaciones WhatsApp", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios", "Automatizaciones", "Integraciones", "Excepciones"],
+    fields: ["Herramientas actuales", "Herramientas a conectar", "Automatizaciones workflow", "Automatizaciones WhatsApp", "Incorporar WhatsApp", "Estado Meta Business", "Número WhatsApp", "Zona número EE. UU.", "Número visible WhatsApp", "Confirmación costes WhatsApp", "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios", "Automatizaciones", "Integraciones", "Excepciones"],
   },
   {
     step: "06",

@@ -9,25 +9,6 @@ type SheetsWriteResponse = {
 
 class SubmissionValidationError extends Error {}
 
-const requiredTextFields = [
-  "companyName", "legalName", "ownerName", "businessEmail", "contactPhone", "website",
-  "activity", "location", "legalAddress", "legalCity", "legalCountry", "timezone",
-  "primaryLanguage", "teamSize", "description", "billingLegalName", "billingTaxId",
-  "billingAddress", "billingEmail", "mainService", "ticket", "priceModel", "monthlyCapacity",
-  "targetCity", "targetRegion", "idealCompanySize", "idealProfileDetail", "decisionMaker",
-  "minimumBudget", "prospectExclusions", "prospectPreferences", "additionalLeadQuestions",
-  "responseTime", "assignment", "salesCycle", "qualification", "contactName", "contactRole",
-  "contactEmail", "initialTeamRoles", "bookingName", "meetingDuration", "availability",
-  "schedule", "pronoun", "adAccess", "adMeeting",
-  "exceptions", "launchDate", "approvalOwner",
-] as const;
-
-const requiredListFields = [
-  "services", "audience", "sectors", "geographies", "targetCountries", "targetClientTypes",
-  "objectives", "channels", "leadFields", "toolsInUse", "toolsToConnect", "workflowAutomations",
-  "whatsappAutomations", "emailAutomations", "adPlatforms",
-] as const;
-
 function nonEmptyText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
 }
@@ -44,32 +25,25 @@ function containsSecretLikeValue(value: unknown): boolean {
 }
 
 function validateSubmission(payload: Record<string, unknown>) {
-  const missing: string[] = requiredTextFields.filter((field) => !nonEmptyText(payload[field]));
-  missing.push(...requiredListFields.filter((field) => !Array.isArray(payload[field]) || payload[field].length === 0));
-  if (missing.length) {
-    throw new SubmissionValidationError(`Faltan campos obligatorios: ${missing.join(", ")}.`);
-  }
-  if ((payload.sectors as unknown[]).length > 3) {
+  if (Array.isArray(payload.sectors) && payload.sectors.length > 3) {
     throw new SubmissionValidationError("Puedes seleccionar un máximo de 3 sectores prioritarios.");
   }
-  if ((payload.channels as unknown[]).includes("Landing pages")) {
-    if (!nonEmptyText(payload.landingCopyOwner) || !nonEmptyText(payload.landingCopyBrief)) {
-      throw new SubmissionValidationError("Las landings requieren responsable del copy y copy o referencias con CTA.");
-    }
-    if (!["Cliente", "Focus Business", "En conjunto"].includes(String(payload.landingCopyOwner))) {
+  if (nonEmptyText(payload.landingCopyOwner)
+    && !["Cliente", "Focus Business", "En conjunto"].includes(String(payload.landingCopyOwner))) {
       throw new SubmissionValidationError("El responsable del copy de las landings no es válido.");
-    }
   }
   for (const field of ["businessEmail", "billingEmail", "contactEmail"] as const) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload[field]))) {
+    if (nonEmptyText(payload[field]) && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(payload[field]))) {
       throw new SubmissionValidationError(`El campo ${field} no contiene un correo válido.`);
     }
   }
-  try {
-    const website = new URL(String(payload.website));
-    if (!['http:', 'https:'].includes(website.protocol)) throw new Error("invalid");
-  } catch {
-    throw new SubmissionValidationError("La web pública debe ser una URL HTTP(S) válida.");
+  if (nonEmptyText(payload.website)) {
+    try {
+      const website = new URL(String(payload.website));
+      if (!["http:", "https:"].includes(website.protocol)) throw new Error("invalid");
+    } catch {
+      throw new SubmissionValidationError("La web pública debe ser una URL HTTP(S) válida.");
+    }
   }
   if (payload.accuracy !== true || payload.terms !== true || payload.ghlPreparationAuthorization !== true) {
     throw new SubmissionValidationError("Faltan las confirmaciones y autorizaciones obligatorias.");
