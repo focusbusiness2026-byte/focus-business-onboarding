@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { buildDownstreamProfile } from "@/lib/downstream-profile";
 
 type SheetsWriteResponse = {
   ok?: boolean;
@@ -86,7 +87,24 @@ async function notifyProspection(onboardingId: string) {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ onboarding_id: onboardingId }),
+      body: JSON.stringify({ onboarding_id: onboardingId, prepare_only: true }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return { configured: true, notified: response.ok };
+  } catch {
+    return { configured: true, notified: false };
+  }
+}
+
+async function notifyViralRadar(profile: ReturnType<typeof buildDownstreamProfile>) {
+  const url = process.env.VIRAL_RADAR_SYNC_URL;
+  const token = process.env.VIRAL_RADAR_SYNC_TOKEN;
+  if (!url || !token || !profile.onboarding_id) return { configured: false, notified: false };
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(profile),
       signal: AbortSignal.timeout(8000),
     });
     return { configured: true, notified: response.ok };
@@ -100,12 +118,19 @@ export async function POST(request: Request) {
     const payload = await request.json() as Record<string, unknown>;
     validateSubmission(payload);
     const sheets = await saveToGoogleSheets(payload);
-    const prospection = await notifyProspection(String(sheets.id || ""));
+    const onboardingId = String(sheets.id || "");
+    const downstreamProfile = buildDownstreamProfile(payload, onboardingId);
+    const [prospection, viralRadar] = await Promise.all([
+      notifyProspection(onboardingId),
+      notifyViralRadar(downstreamProfile),
+    ]);
     return NextResponse.json({
       ok: true,
       saved: { id: sheets.id, row: sheets.row, submittedAt: payload.submittedAt },
       sheets: { configured: true },
       prospection,
+      viralRadar,
+      downstream: { schemaVersion: downstreamProfile.schema_version, externalSearchStarted: false },
     });
   } catch (error) {
     const validationError = error instanceof SubmissionValidationError;

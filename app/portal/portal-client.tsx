@@ -29,7 +29,7 @@ const detailGroups = [
     step: "02",
     title: "Oferta y configuración de prospección",
     description: "Servicios, sectores, zonas, perfil ideal, presupuesto, exclusiones y criterios.",
-    fields: ["Servicio prioritario", "Ticket medio", "Modelo de precio", "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Servicios", "Público", "Sectores", "Mercados", "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Tamaño empresa ideal", "Perfil ideal detallado", "Decisor habitual", "Presupuesto mínimo", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección"],
+    fields: ["Servicio prioritario", "Ticket medio", "Modelo de precio", "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Servicios", "Público", "Sectores", "Mercados", "Ciudad objetivo", "Región objetivo", "Países objetivo", "Regiones objetivo", "Tipos de cliente objetivo", "Tamaño empresa ideal", "Perfil ideal detallado", "Decisor habitual", "Presupuesto mínimo", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección"],
   },
   {
     step: "03",
@@ -41,13 +41,13 @@ const detailGroups = [
     step: "04",
     title: "Equipo, acceso futuro y comunicación",
     description: "Contacto, roles iniciales y personalización recomendada sin credenciales.",
-    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Equipo y roles iniciales", "Redes oficiales", "Dominio/subdominio deseado", "Configuración subdominio", "Uso del subdominio", "Subdominio preferido", "Subdominio alternativo", "Propiedad del dominio", "Estado acceso DNS", "Verificación subdominio", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
+    fields: ["Responsable", "Cargo", "Email responsable", "Teléfono / WhatsApp", "Equipo y roles iniciales", "Redes oficiales", "Dominio/subdominio deseado", "Dominio opción 1", "Estado dominio 1", "Dominio opción 2", "Estado dominio 2", "Dominio opción 3", "Estado dominio 3", "Dominio existente", "Acceso dominio existente", "Reunión dominio existente", "Nombre reunión", "Duración reunión", "Disponibilidad", "Horario", "Tratamiento", "Tono comunicación"],
   },
   {
     step: "05",
     title: "Automatizaciones e integraciones",
     description: "Herramientas, flujos automáticos, mensajes y anuncios.",
-    fields: ["Herramientas actuales", "Herramientas a conectar", "Automatizaciones workflow", "Automatizaciones WhatsApp", "Incorporar WhatsApp", "Estado Meta Business", "Número WhatsApp", "Zona número EE. UU.", "Número visible WhatsApp", "Confirmación costes WhatsApp", "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios", "Automatizaciones", "Integraciones", "Excepciones"],
+    fields: ["Herramientas actuales", "Herramientas a conectar", "Automatizaciones workflow", "Automatizaciones WhatsApp", "Incorporar WhatsApp", "Estado WhatsApp Business", "Número visible WhatsApp", "Confirmación costes WhatsApp", "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación", "Automatizaciones email", "Plataformas anuncios", "Acceso anuncios", "Reunión anuncios", "Acceso Meta Business", "Acceso página Facebook", "Acceso Ads Manager", "Método de pago Meta", "Automatizaciones", "Integraciones", "Excepciones"],
   },
   {
     step: "06",
