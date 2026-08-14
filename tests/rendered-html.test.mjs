@@ -39,18 +39,26 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   const mapping = await readFile(new URL("../lib/onboarding.ts", import.meta.url), "utf8");
   assert.match(page, /Ciudad objetivo principal/);
   assert.match(page, /Tipos de cliente objetivo/);
-  assert.match(page, /Exclusiones obligatorias/);
+  assert.match(page, /Exclusiones de prospección/);
   assert.match(page, /Capacidad mensual para nuevos proyectos/);
   assert.match(page, /Casos de éxito o portafolio/);
   assert.match(page, /Empresas de referencia/);
   assert.match(page, /Puedes seleccionar un máximo de 3 sectores prioritarios/);
   assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
-  assert.match(page, /Landings · copy y llamada a la acción/);
+  assert.match(page, /Objetivo y público de la campaña/);
+  assert.match(page, /Landing page, contenido y VSL/);
+  assert.match(page, /Tercer color corporativo/);
   assert.match(page, /Coste adicional/);
+  assert.match(page, /Integración oficial de WhatsApp Business/);
+  assert.match(page, /Llamadas desde GoHighLevel/);
+  assert.match(page, /Buscar un dominio nuevo/);
+  assert.match(page, /MÁS COMPLEJA/);
+  assert.match(page, /DomainSearch/);
+  assert.doesNotMatch(page, /Campos informativos opcionales/);
   assert.match(page, /mediante OAuth cuando el proveedor lo permita/);
-  assert.match(page, /Información · ¿por qué te lo pedimos\?/);
-  assert.match(page, /No escribas contraseñas, claves API, datos bancarios ni códigos de acceso/);
-  assert.match(page, /Requerido para preparar la subcuenta/);
+  assert.match(page, /Accesos opcionales para configurar Meta/);
+  assert.match(page, /No compartas contraseñas/);
+  assert.match(page, /No la crean ni solicitan credenciales/);
   assert.match(page, /recomendado para personalizar/i);
   assert.match(mapping, /Preparación prospección/);
   assert.match(mapping, /Lista para revisión; no creada/);
@@ -58,6 +66,10 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(mapping, /"Capacidad mensual"/);
   assert.match(mapping, /"Responsable copy landing"/);
   assert.match(mapping, /"Copy \/ referencias \/ CTA landing"/);
+  assert.match(mapping, /"Objetivo campaña"/);
+  assert.match(mapping, /"Uso VSL"/);
+  assert.match(mapping, /"Regiones objetivo"/);
+  assert.match(mapping, /"Acceso Meta Business"/);
 });
 
 test("keeps optional choices clear and removes newsletter", async () => {
@@ -66,6 +78,45 @@ test("keeps optional choices clear and removes newsletter", async () => {
   assert.match(source, /sectorsOther/);
   assert.match(source, /¿Quién recibe cada contacto\?/);
   assert.doesNotMatch(source, /Newsletter|Enlace al logo \(opcional\)|label="Tono de marca"/);
+});
+
+test("supports searchable typography, dependent regions and configurable lead questions", async () => {
+  const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const mapping = await readFile(new URL("../lib/onboarding.ts", import.meta.url), "utf8");
+  const appsScript = await readFile(new URL("../google-apps-script/Code.gs", import.meta.url), "utf8");
+  const fontLiteral = source.match(/const bodyFontOptions = \[([\s\S]*?)\] as const;/);
+  assert.ok(fontLiteral);
+  const fonts = Function(`return [${fontLiteral[1]}]`)();
+  assert.equal(fonts.length, 150);
+  assert.equal(new Set(fonts).size, 150);
+  assert.match(source, /bodyFontOptions\.slice\(0, 100\)/);
+  assert.match(source, /Buscar tipografía/);
+  assert.match(source, /regionsByCountry/);
+  assert.match(source, /"Portugal": \["Norte", "Centro"/);
+  assert.match(source, /key === "targetCountries"/);
+  assert.match(source, /Selección múltiple/);
+  assert.match(source, /Añade al menos dos opciones, una por línea/);
+  assert.match(source, /window\.scrollTo\(\{ top: 0, behavior: "smooth" \}\)/);
+  assert.match(mapping, /allLeadQuestions\(data\)/);
+  assert.match(appsScript, /allLeadQuestions\(data\)/);
+});
+
+test("provides expanded official-platform setup guides", async () => {
+  const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
+  const meta = await readFile(new URL("../app/guias/meta-business/page.tsx", import.meta.url), "utf8");
+  const facebook = await readFile(new URL("../app/guias/facebook-page/page.tsx", import.meta.url), "utf8");
+  const ads = await readFile(new URL("../app/guias/ads-manager/page.tsx", import.meta.url), "utf8");
+  const phone = await readFile(new URL("../app/guias/telefonia/page.tsx", import.meta.url), "utf8");
+  const whatsapp = await readFile(new URL("../app/guias/whatsapp/page.tsx", import.meta.url), "utf8");
+  assert.match(page, /Ver guía completa de WhatsApp Business/);
+  assert.match(page, /más completa sea la información, mejor podremos orientar la campaña/);
+  assert.match(page, /Por qué no recomendamos esta opción/);
+  for (const guide of [meta, facebook, ads, phone, whatsapp]) {
+    assert.ok((guide.match(/title:/g) || []).length >= 8);
+  }
+  assert.match(phone, /número existente para determinadas llamadas salientes/);
+  assert.match(whatsapp, /coexistencia o migración/);
+  assert.doesNotMatch(whatsapp, /contraseña.*Focus Business/i);
 });
 
 test("identifies invalid fields and navigates directly to each error", async () => {
@@ -137,12 +188,18 @@ test("keeps the legacy D1 export disabled", async () => {
   assert.match((await response.json()).error, /Google Sheets es la única fuente operativa/);
 });
 
-test("rejects an incomplete submission before Google Sheets", async () => {
+test("accepts optional informational fields but requires final authorizations", async () => {
   const incomplete = await requestApp(new Request("http://localhost/api/onboarding", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ companyName: "Demo" }),
   }));
   assert.equal(incomplete.status, 400);
-  assert.match((await incomplete.json()).error, /Faltan campos obligatorios/);
+  assert.match((await incomplete.json()).error, /confirmaciones y autorizaciones obligatorias/);
+
+  const authorizedMinimal = await requestApp(new Request("http://localhost/api/onboarding", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accuracy: true, terms: true, ghlPreparationAuthorization: true }),
+  }));
+  assert.equal(authorizedMinimal.status, 502);
+  assert.match((await authorizedMinimal.json()).error, /Google Sheets no está configurado/);
 
   const route = await readFile(new URL("../app/api/onboarding/route.ts", import.meta.url), "utf8");
   assert.match(route, /containsSecretLikeValue/);

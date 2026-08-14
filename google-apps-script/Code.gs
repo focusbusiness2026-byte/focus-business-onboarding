@@ -18,6 +18,11 @@ const ONBOARDING_HEADERS = [
   "Ciudad objetivo", "Región objetivo", "Países objetivo", "Tipos de cliente objetivo", "Perfil ideal detallado", "Exclusiones de prospección", "Preferencias de prospección", "Preparación prospección",
   "Propietario / representante", "Email corporativo", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Redes oficiales", "Dominio/subdominio deseado", "Equipo y roles iniciales", "Autorización preparación GHL", "Preparación subcuenta GHL", "Validación subcuenta GHL",
   "Capacidad mensual", "Casos de éxito / portafolio", "Empresas de referencia", "Responsable copy landing", "Copy / referencias / CTA landing",
+  "Tercer color corporativo", "Objetivo campaña", "Conversión campaña", "Público campaña", "Destino campaña", "Objetivo landing", "Contenido landing", "Uso VSL", "Enlace VSL", "Indicaciones VSL",
+  "Acceso Meta Business", "Acceso página Facebook", "Acceso Ads Manager", "Método de pago Meta", "Regiones objetivo",
+  "Incorporar WhatsApp", "Estado WhatsApp Business", "Número WhatsApp", "Zona número EE. UU.", "Número visible WhatsApp", "Confirmación costes WhatsApp",
+  "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación",
+  "Configuración subdominio", "Uso del subdominio", "Subdominio preferido", "Subdominio alternativo", "Propiedad del dominio", "Estado acceso DNS", "Verificación subdominio", "Dominio opción 1", "Estado dominio 1", "Dominio opción 2", "Estado dominio 2", "Dominio opción 3", "Estado dominio 3", "Dominio existente", "Acceso dominio existente", "Reunión dominio existente",
 ];
 
 function doPost(e) {
@@ -60,7 +65,7 @@ function valueFor(header, data) {
     "Empresa": () => data.companyName,
     "Razón social": () => data.legalName,
     "Web": () => data.website,
-    "Actividad": () => data.activity,
+    "Actividad": () => choiceWithOther(data.activity, data.activityOther),
     "Ciudad / país": () => data.location,
     "Tamaño equipo": () => data.teamSize,
     "Descripción": () => data.description,
@@ -70,9 +75,9 @@ function valueFor(header, data) {
     "Servicio prioritario": () => data.mainService,
     "Ticket medio": () => data.ticket,
     "Modelo de precio": () => data.priceModel,
-    "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => asText(data.geographies),
+    "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => withOther(data.geographies, data.geographiesOther),
     "Tamaño empresa ideal": () => data.idealCompanySize, "Decisor habitual": () => data.decisionMaker, "Presupuesto mínimo": () => data.minimumBudget,
-    "Objetivos": () => asText(data.objectives), "Canales": () => asText(data.channels), "Campos del lead": () => asText(data.leadFields),
+    "Objetivos": () => asText(data.objectives), "Canales": () => asText(data.channels), "Campos del lead": () => withOther(data.leadFields, data.leadFieldsOther),
     "Tiempo de respuesta": () => data.responseTime, "Asignación de leads": () => data.assignment, "Ciclo de venta": () => data.salesCycle, "Criterio de cualificación": () => data.qualification,
     "Responsable": () => data.contactName, "Cargo": () => data.contactRole, "Email responsable": () => data.contactEmail, "Teléfono / WhatsApp": () => data.contactPhone,
     "Nombre reunión": () => data.bookingName, "Duración reunión": () => data.meetingDuration, "Disponibilidad": () => data.availability, "Horario": () => data.schedule,
@@ -80,26 +85,42 @@ function valueFor(header, data) {
     "Cuenta GoHighLevel": () => data.existingGhl, "Google Sheets": () => data.sheets, "Excepciones": () => data.exceptions, "Fecha lanzamiento": () => data.launchDate,
     "Responsable aprobación": () => data.approvalOwner, "Datos correctos": () => Boolean(data.accuracy), "Autorización": () => Boolean(data.terms),
     "Recursos Drive": () => data.driveAssetsUrl, "Color corporativo primario": () => data.brandPrimaryColor || data.brandColor,
-    "Color corporativo secundario": () => data.brandSecondaryColor, "Tipografía títulos": () => data.headingFont, "Tipografía textos": () => data.bodyFont,
-    "Preguntas adicionales": () => data.additionalLeadQuestions, "Herramientas actuales": () => asText(data.toolsInUse), "Herramientas a conectar": () => asText(data.toolsToConnect),
+    "Color corporativo secundario": () => data.brandSecondaryColor, "Tercer color corporativo": () => data.brandAccentColor, "Tipografía títulos": () => data.headingFont, "Tipografía textos": () => data.bodyFont,
+    "Preguntas adicionales": () => allLeadQuestions(data), "Objetivo campaña": () => choiceWithOther(data.campaignObjective, data.campaignObjectiveOther), "Conversión campaña": () => data.campaignConversion, "Público campaña": () => data.campaignAudience, "Destino campaña": () => choiceWithOther(data.campaignDestination, data.campaignDestinationOther), "Objetivo landing": () => choiceWithOther(data.landingGoal, data.landingGoalOther), "Contenido landing": () => data.landingSections, "Uso VSL": () => data.landingVslChoice, "Enlace VSL": () => data.landingVslUrl, "Indicaciones VSL": () => data.landingVslNotes, "Herramientas actuales": () => asText(data.toolsInUse), "Herramientas a conectar": () => asText(data.toolsToConnect),
     "Automatizaciones workflow": () => asText(data.workflowAutomations), "Automatizaciones WhatsApp": () => asText(data.whatsappAutomations),
     "Automatizaciones email": () => asText(data.emailAutomations), "Plataformas anuncios": () => asText(data.adPlatforms),
-    "Acceso anuncios": () => data.adAccess, "Reunión anuncios": () => data.adMeeting,
+    "Acceso anuncios": () => data.adAccess, "Reunión anuncios": () => data.adMeeting, "Acceso Meta Business": () => data.metaBusinessAccess, "Acceso página Facebook": () => data.metaPageAccess, "Acceso Ads Manager": () => data.metaAdsAccess, "Método de pago Meta": () => data.metaPaymentStatus,
     "Ciudad objetivo": () => data.targetCity, "Región objetivo": () => data.targetRegion,
-    "Países objetivo": () => withOther(data.targetCountries, data.targetCountriesOther), "Tipos de cliente objetivo": () => withOther(data.targetClientTypes, data.targetClientTypesOther),
+    "Países objetivo": () => withOther(data.targetCountries, data.targetCountriesOther), "Regiones objetivo": () => withOther(data.targetRegions, data.targetRegionsOther), "Tipos de cliente objetivo": () => withOther(data.targetClientTypes, data.targetClientTypesOther),
     "Perfil ideal detallado": () => data.idealProfileDetail, "Exclusiones de prospección": () => data.prospectExclusions, "Preferencias de prospección": () => data.prospectPreferences,
     "Preparación prospección": () => "Configuración lista para sincronizar", "Propietario / representante": () => data.ownerName, "Email corporativo": () => data.businessEmail,
-    "Dirección legal": () => data.legalAddress, "Ciudad legal": () => data.legalCity, "País legal": () => data.legalCountry, "Zona horaria": () => data.timezone, "Idioma principal": () => data.primaryLanguage,
+    "Dirección legal": () => data.legalAddress, "Ciudad legal": () => data.legalCity, "País legal": () => data.legalCountry, "Zona horaria": () => choiceWithOther(data.timezone, data.timezoneOther), "Idioma principal": () => choiceWithOther(data.primaryLanguage, data.primaryLanguageOther),
     "Nombre facturación": () => data.billingLegalName, "ID fiscal empresarial": () => data.billingTaxId, "Dirección facturación": () => data.billingAddress, "Email facturación": () => data.billingEmail,
     "Redes oficiales": () => data.companySocialLinks, "Dominio/subdominio deseado": () => data.desiredDomain, "Equipo y roles iniciales": () => data.initialTeamRoles,
     "Autorización preparación GHL": () => Boolean(data.ghlPreparationAuthorization), "Preparación subcuenta GHL": () => "Lista para revisión; no creada", "Validación subcuenta GHL": () => "Pendiente de aprobación",
     "Capacidad mensual": () => data.monthlyCapacity, "Casos de éxito / portafolio": () => data.portfolioHighlights, "Empresas de referencia": () => data.referenceCompanies, "Responsable copy landing": () => data.landingCopyOwner, "Copy / referencias / CTA landing": () => data.landingCopyBrief,
+    "Incorporar WhatsApp": () => data.whatsappSetup, "Estado WhatsApp Business": () => data.whatsappBusinessAccount, "Número WhatsApp": () => data.whatsappNumberChoice, "Zona número EE. UU.": () => data.whatsappUsNumberArea, "Número visible WhatsApp": () => data.whatsappDisplayNumber, "Confirmación costes WhatsApp": () => data.whatsappCostAcceptance,
+    "Uso de llamadas": () => data.callingSetup, "Número para llamadas": () => data.callingNumberChoice, "Número visible llamadas": () => data.callingDisplayNumber, "Grabación de llamadas": () => data.callRecording, "Confirmación normativa grabación": () => data.callRecordingNotice,
+    "Configuración subdominio": () => data.subdomainSetup, "Uso del subdominio": () => choiceWithOther(data.subdomainPurpose, data.subdomainPurposeOther), "Subdominio preferido": () => data.subdomainPreferred, "Subdominio alternativo": () => data.subdomainAlternative, "Propiedad del dominio": () => data.subdomainOwnership, "Estado acceso DNS": () => data.subdomainDnsStatus, "Verificación subdominio": () => data.subdomainVerification, "Dominio opción 1": () => data.domainOption1, "Estado dominio 1": () => data.domainOption1Status, "Dominio opción 2": () => data.domainOption2, "Estado dominio 2": () => data.domainOption2Status, "Dominio opción 3": () => data.domainOption3, "Estado dominio 3": () => data.domainOption3Status, "Dominio existente": () => data.existingDomainName, "Acceso dominio existente": () => data.existingDomainAccess, "Reunión dominio existente": () => data.existingDomainMeeting,
   };
   return fields[header] ? (fields[header]() || "") : "";
 }
 
 function asText(value) { return Array.isArray(value) ? value.join(", ") : (value || ""); }
 function withOther(value, detail) { return Array.isArray(value) ? value.map((item) => item === "Otro" && detail ? `Otro: ${detail}` : item).join(", ") : (value || ""); }
+function choiceWithOther(value, detail) { return /^Otr[oa]\b/i.test(String(value || "")) && String(detail || "").trim() ? String(detail).trim() : (value || ""); }
+function configuredLeadQuestions(value) {
+  if (!value || typeof value !== "string") return "";
+  try {
+    const questions = JSON.parse(value);
+    if (!Array.isArray(questions)) return "";
+    return questions.map((item, index) => {
+      const options = Array.isArray(item.options) && item.options.length ? ` Opciones: ${item.options.join(" | ")}.` : "";
+      return `${index + 1}. ${item.question} [${item.type}].${options}`;
+    }).join("\n");
+  } catch (error) { return ""; }
+}
+function allLeadQuestions(data) { return [String(data.additionalLeadQuestions || "").trim(), configuredLeadQuestions(data.leadQuestionConfig)].filter(Boolean).join("\n\n"); }
 function safeCellValue(value) {
   if (typeof value !== "string") return value;
   return /^[=+\-@]/.test(value) ? `'${value}` : value;
