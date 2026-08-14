@@ -23,7 +23,7 @@ const detailGroups = [
     step: "01",
     title: "Empresa y preparación de subcuenta",
     description: "Identidad legal/comercial y datos operativos para una creación posterior aprobada.",
-    fields: ["Empresa", "Razón social", "Propietario / representante", "Email corporativo", "Web", "Actividad", "Ciudad / país", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Tamaño equipo", "Descripción", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tipografía títulos", "Tipografía textos"],
+    fields: ["Empresa", "Razón social", "Propietario / representante", "Email corporativo", "Web", "Actividad", "Ciudad / país", "Dirección legal", "Ciudad legal", "País legal", "Zona horaria", "Idioma principal", "Tamaño equipo", "Descripción", "Nombre facturación", "ID fiscal empresarial", "Dirección facturación", "Email facturación", "Recursos Drive", "Color corporativo primario", "Color corporativo secundario", "Tercer color corporativo", "Tipografía títulos", "Tipografía textos"],
   },
   {
     step: "02",
@@ -35,7 +35,7 @@ const detailGroups = [
     step: "03",
     title: "Captación y proceso comercial",
     description: "Canales, información del contacto y reglas de seguimiento.",
-    fields: ["Objetivos", "Canales", "Campos del lead", "Preguntas adicionales", "Responsable copy landing", "Copy / referencias / CTA landing", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación"],
+    fields: ["Objetivos", "Objetivo campaña", "Conversión campaña", "Público campaña", "Destino campaña", "Canales", "Campos del lead", "Preguntas adicionales", "Objetivo landing", "Contenido landing", "Responsable copy landing", "Copy / referencias / CTA landing", "Uso VSL", "Enlace VSL", "Indicaciones VSL", "Tiempo de respuesta", "Asignación de leads", "Ciclo de venta", "Criterio de cualificación"],
   },
   {
     step: "04",

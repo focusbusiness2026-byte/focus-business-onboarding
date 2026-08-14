@@ -45,12 +45,16 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(page, /Empresas de referencia/);
   assert.match(page, /Puedes seleccionar un máximo de 3 sectores prioritarios/);
   assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
-  assert.match(page, /Landings · copy y llamada a la acción/);
+  assert.match(page, /Objetivo y público de la campaña/);
+  assert.match(page, /Landing page, contenido y VSL/);
+  assert.match(page, /Tercer color corporativo/);
   assert.match(page, /Coste adicional/);
   assert.match(page, /WhatsApp Business oficial y número telefónico/);
   assert.match(page, /Comprar número nuevo de Estados Unidos/);
   assert.match(page, /Llamadas desde GoHighLevel y grabación/);
-  assert.match(page, /Configurar y verificar un subdominio/);
+  assert.match(page, /Dominio o subdominio para páginas, formularios y portal/);
+  assert.match(page, /NO RECOMENDADO/);
+  assert.match(page, /no simula disponibilidad/);
   assert.match(page, /Campos informativos opcionales/);
   assert.match(page, /mediante OAuth cuando el proveedor lo permita/);
   assert.match(page, /Información · ¿por qué te lo pedimos\?/);
@@ -63,6 +67,8 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(mapping, /"Capacidad mensual"/);
   assert.match(mapping, /"Responsable copy landing"/);
   assert.match(mapping, /"Copy \/ referencias \/ CTA landing"/);
+  assert.match(mapping, /"Objetivo campaña"/);
+  assert.match(mapping, /"Uso VSL"/);
 });
 
 test("keeps optional choices clear and removes newsletter", async () => {

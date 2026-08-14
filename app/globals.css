@@ -135,6 +135,13 @@ body { overflow-x:hidden }
 .setup-disclosure[open]>summary { border-bottom:1px solid #31445d; background:#14243a }
 .setup-disclosure>.purpose-note,.setup-disclosure>.grid,.setup-disclosure>.intro { margin-left:20px; margin-right:20px }
 .setup-disclosure>.intro { margin-bottom:20px }
+.domain-own-option { margin:0 20px 20px; border:1px solid #603941; border-radius:12px; background:#151923; overflow:hidden }
+.domain-own-option>summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px; color:#d8dde6; cursor:pointer }
+.domain-own-option>summary b { flex:0 0 auto; padding:4px 9px; border:1px solid #7d3b45; border-radius:999px; background:#3a1f24; color:#ffb4bd; font-size:10px; letter-spacing:.5px }
+.domain-own-option>div { padding:0 18px 16px; color:#aeb9c8; font-size:13px; line-height:1.55 }
+.domain-own-option ul { margin:10px 0 12px 19px; padding:0 }
+.domain-own-option code { color:#f0ca5c }
+@media(max-width:600px){.domain-own-option{margin-left:14px;margin-right:14px}.domain-own-option>summary{align-items:flex-start;flex-direction:column}}
 
 @media(max-width:760px){
   .portal-header { align-items:flex-start; flex-direction:column; min-height:0; padding:20px 18px; gap:18px }
