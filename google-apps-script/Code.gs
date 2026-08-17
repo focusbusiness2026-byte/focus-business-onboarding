@@ -156,7 +156,7 @@ function valueFor(header, data) {
     "Color marca": () => data.brandPrimaryColor || data.brandColor,
     "Logo URL": () => data.logoUrl,
     "Tono marca": () => data.formality,
-    "Servicio prioritario": () => data.mainService,
+    "Servicio prioritario": () => withOther(data.mainService, data.mainServiceOther),
     "Ticket medio": () => data.ticket,
     "Modelo de precio": () => data.priceModel,
     "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => withOther(data.geographies, data.geographiesOther),

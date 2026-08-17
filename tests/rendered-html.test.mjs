@@ -37,12 +37,17 @@ test("renders the public Focus Business onboarding form", async () => {
 test("defines detailed prospecting and safe subaccount preparation fields", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mapping = await readFile(new URL("../lib/onboarding.ts", import.meta.url), "utf8");
+  const downstream = await readFile(new URL("../lib/downstream-profile.ts", import.meta.url), "utf8");
+  const appsScript = await readFile(new URL("../google-apps-script/Code.gs", import.meta.url), "utf8");
   assert.match(page, /Ciudad objetivo principal/);
   assert.match(page, /Tipos de cliente objetivo/);
   assert.match(page, /Exclusiones de prospección/);
   assert.match(page, /Capacidad mensual para nuevos proyectos/);
   assert.match(page, /Casos de éxito o portafolio/);
   assert.match(page, /Empresas de referencia/);
+  assert.match(page, /Servicios prioritarios para esta prospección \(selecciona uno o varios\)/);
+  assert.match(page, /field="mainService".*otherField="mainServiceOther"/);
+  assert.match(page, /Otros servicios que también quieres impulsar \(opcional\)/);
   assert.match(page, /Puedes seleccionar un máximo de 3 sectores prioritarios/);
   assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
   assert.match(page, /Objetivo y público de la campaña/);
@@ -70,6 +75,10 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(mapping, /"Uso VSL"/);
   assert.match(mapping, /"Regiones objetivo"/);
   assert.match(mapping, /"Acceso Meta Business"/);
+  assert.match(mapping, /selectionWithOther\(data\.mainService, data\.mainServiceOther\)/);
+  assert.match(appsScript, /withOther\(data\.mainService, data\.mainServiceOther\)/);
+  assert.match(downstream, /priorityServices\.join\(", "\)/);
+  assert.match(downstream, /new Set\(\[\.\.\.priorityServices/);
 });
 
 test("keeps optional choices clear and removes newsletter", async () => {
@@ -230,7 +239,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   const textFields = [
     "companyName","legalName","ownerName","businessEmail","contactPhone","website","activity","location",
     "legalAddress","legalCity","legalCountry","timezone","primaryLanguage","teamSize","description",
-    "billingLegalName","billingTaxId","billingAddress","billingEmail","mainService","ticket","priceModel",
+    "billingLegalName","billingTaxId","billingAddress","billingEmail","ticket","priceModel",
     "monthlyCapacity","targetCity","targetRegion","idealCompanySize","idealProfileDetail","decisionMaker",
     "minimumBudget","prospectExclusions","prospectPreferences","additionalLeadQuestions","landingCopyOwner","landingCopyBrief","responseTime",
     "assignment","salesCycle","qualification","contactName","contactRole","contactEmail","initialTeamRoles",
@@ -240,7 +249,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   const payload = Object.fromEntries(textFields.map((field) => [field, "Dato de prueba"]));
   Object.assign(payload, {
     businessEmail: "empresa@example.test", billingEmail: "facturacion@example.test", contactEmail: "persona@example.test",
-    website: "https://example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true,
+    website: "https://example.test", mainService: ["Vídeo corporativo", "Podcast"], accuracy: true, terms: true, ghlPreparationAuthorization: true,
   });
   for (const field of ["services","audience","sectors","geographies","targetCountries","targetClientTypes","objectives","channels","leadFields","toolsInUse","toolsToConnect","workflowAutomations","whatsappAutomations","emailAutomations","adPlatforms"]) payload[field] = ["Opción de prueba"];
   payload.channels = ["Landing pages"];
