@@ -2,6 +2,37 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 import { FormEvent, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+const PORTAL_DESTINATIONS = [
+  {
+    value: "https://prospeccion.focusbusinesslab.es/portal",
+    title: "Prospección",
+    description: "Busca, revisa y gestiona leads y ejecuciones.",
+    theme: "prospection",
+    eyebrow: "PORTAL DE PROSPECCIÓN",
+    heading: "Acceso a Prospección",
+    badge: "PROSPECTOS",
+  },
+  {
+    value: "https://radar.focusbusinesslab.es/",
+    title: "Focus Viral Radar",
+    description: "Consulta tendencias, estructuras y contenidos guardados.",
+    theme: "radar",
+    eyebrow: "INTELIGENCIA CREATIVA",
+    heading: "Acceso a Focus Viral Radar",
+    badge: "RADAR",
+  },
+  {
+    value: "https://onboarding.focusbusinesslab.es/portal",
+    title: "Leads y clientes · Administración",
+    description: "Revisa como administrador la información registrada por cada cliente.",
+    theme: "admin",
+    eyebrow: "ÁREA ADMINISTRATIVA",
+    heading: "Administración de clientes",
+    badge: "ADMINISTRADOR",
+  },
+] as const;
 
 const ALLOWED_DESTINATIONS = new Set([
   "https://onboarding.focusbusinesslab.es/portal",
@@ -22,10 +53,19 @@ function allowedReturnTo(raw: string | null) {
 }
 
 export default function SharedAccessPage() {
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
+  const [selectedDestination, setSelectedDestination] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const requestedDestination = allowedReturnTo(searchParams.get("return_to"));
+  const destination = selectedDestination || (
+    PORTAL_DESTINATIONS.some((item) => item.value === requestedDestination)
+      ? requestedDestination
+      : PORTAL_DESTINATIONS[0].value
+  );
+  const activeDestination = PORTAL_DESTINATIONS.find((item) => item.value === destination) || PORTAL_DESTINATIONS[0];
 
   async function requestLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,11 +73,10 @@ export default function SharedAccessPage() {
     setMessage("");
     setError("");
     try {
-      const returnTo = allowedReturnTo(new URLSearchParams(window.location.search).get("return_to"));
       const response = await fetch("/api/auth/request-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, returnTo }),
+        body: JSON.stringify({ email, returnTo: destination }),
       });
       const result = await response.json() as { ok?: boolean; message?: string; error?: string };
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo enviar el enlace.");
@@ -49,14 +88,21 @@ export default function SharedAccessPage() {
     }
   }
 
-  return <main className="access"><section className="access-card">
+  return <main className={`access access-${activeDestination.theme}`}><section className="access-card">
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
-    <p className="eyebrow">ACCESO UNIFICADO</p>
-    <h1>Entra a tus portales</h1>
+    <div className="access-context"><p className="eyebrow">{activeDestination.eyebrow}</p><span className="access-destination-badge">{activeDestination.badge}</span></div>
+    <h1>{activeDestination.heading}</h1>
     <p className="intro">Escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez.</p>
     <form className="access-form" onSubmit={requestLink}>
+      <fieldset className="portal-destinations">
+        <legend>¿A dónde quieres entrar?</legend>
+        {PORTAL_DESTINATIONS.map((item, index) => <div className="portal-destination" key={item.value}>
+          <input id={`portal-destination-${index}`} type="radio" name="destination" value={item.value} checked={destination === item.value} onChange={() => setSelectedDestination(item.value)} />
+          <label htmlFor={`portal-destination-${index}`}><b>{item.title}</b><small>{item.description}</small></label>
+        </div>)}
+      </fieldset>
       <label className="input"><span>Correo registrado</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} autoComplete="email" required placeholder="nombre@empresa.com" /></label>
-      <button className="primary access-button" type="submit" disabled={loading}>{loading ? "Enviando…" : "Enviar enlace de acceso →"}</button>
+      <button className="primary access-button" type="submit" disabled={loading}>{loading ? "Enviando…" : `Entrar a ${activeDestination.title} →`}</button>
     </form>
     {message && <p className="notice success">{message}</p>}
     {error && <p className="access-error" role="alert">{error}</p>}
