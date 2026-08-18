@@ -8,6 +8,10 @@ type SheetPortalResponse = {
   records?: Record<string, unknown>[];
 };
 
+function isAdminRole(role: unknown) {
+  return String(role || "").trim().toLowerCase().includes("admin");
+}
+
 async function accessFor(email: unknown) {
   const normalized = String(email || "").trim().toLowerCase();
   const sheetUrl = process.env.GOOGLE_SHEETS_PORTAL_URL;
@@ -42,6 +46,7 @@ export async function POST(request: Request) {
   const access = await accessFor(identity.email);
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Este correo no está autorizado en la pestaña Accesos." }, { status: 403 });
+  if (!isAdminRole(access.role)) return NextResponse.json({ ok: false, error: "Este portal está disponible únicamente para administradores." }, { status: 403 });
   try {
     return NextResponse.json({ ok: true, role: access.role, email: access.email, records: access.records || [] });
   } catch {
@@ -56,6 +61,7 @@ export async function DELETE(request: Request) {
   const access = await accessFor(identity.email);
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Correo no autorizado." }, { status: 403 });
+  if (!isAdminRole(access.role)) return NextResponse.json({ ok: false, error: "Esta acción está disponible únicamente para administradores." }, { status: 403 });
   const id = String(body.id || "").trim();
   if (!id) return NextResponse.json({ ok: false, error: "Falta el identificador del registro." }, { status: 400 });
   try {
