@@ -56,7 +56,7 @@ function sendMagicLogin(email, magicUrl) {
   }
   MailApp.sendEmail({
     to: normalized,
-    subject: "Tu enlace de acceso a Focus Business",
+    subject: "Tu acceso seguro a Focus Business",
     body: [
       "Abre este enlace para acceder a los portales de Focus Business:",
       "",
@@ -65,9 +65,62 @@ function sendMagicLogin(email, magicUrl) {
       "El enlace caduca en 15 minutos y solo funciona una vez. Al utilizarlo se cerrará cualquier sesión anterior asociada a este correo.",
       "Si no solicitaste este acceso, puedes ignorar el mensaje.",
     ].join("\n"),
+    htmlBody: accessEmailHtml(magicUrl),
     name: "Focus Business",
   });
   return json({ ok: true });
+}
+
+function accessEmailHtml(magicUrl) {
+  const safeUrl = escapeEmailHtml(String(magicUrl || ""));
+  return [
+    '<!doctype html>',
+    '<html lang="es">',
+    '<body style="margin:0;padding:0;background:#07111f;color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">',
+    '<div style="display:none;max-height:0;overflow:hidden;opacity:0;">Tu enlace seguro de acceso a Focus Business está listo.</div>',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;background:#07111f;">',
+    '<tr><td align="center" style="padding:32px 16px;">',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:620px;background:#102036;border:1px solid #2c4059;border-radius:18px;overflow:hidden;">',
+    '<tr><td style="height:5px;background:#e7b93f;font-size:0;line-height:0;">&nbsp;</td></tr>',
+    '<tr><td style="padding:36px 38px 20px;">',
+    '<table role="presentation" cellspacing="0" cellpadding="0" border="0"><tr>',
+    '<td style="width:62px;height:62px;border:2px solid #e7b93f;border-radius:50%;text-align:center;vertical-align:middle;color:#e7b93f;font-family:Georgia,serif;font-size:35px;line-height:62px;">F</td>',
+    '<td style="padding-left:16px;vertical-align:middle;"><div style="font-size:24px;letter-spacing:7px;color:#ffffff;">FOCUS</div><div style="margin-top:6px;font-size:11px;letter-spacing:6px;color:#e7b93f;">BUSINESS</div></td>',
+    '</tr></table>',
+    '</td></tr>',
+    '<tr><td style="padding:12px 38px 38px;">',
+    '<div style="font-size:12px;font-weight:bold;letter-spacing:2px;color:#e7b93f;">ACCESO SEGURO</div>',
+    '<h1 style="margin:14px 0 12px;color:#ffffff;font-size:30px;line-height:1.2;">Entra a Focus Business</h1>',
+    '<p style="margin:0 0 24px;color:#b9c7d8;font-size:16px;line-height:1.65;">Tu enlace personal está listo. Utilízalo para entrar al portal solicitado con el correo autorizado.</p>',
+    '<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;"><tr><td bgcolor="#e7b93f" style="border-radius:10px;">',
+    '<a href="' + safeUrl + '" style="display:inline-block;padding:15px 28px;color:#07111f;text-decoration:none;font-size:16px;font-weight:bold;">Entrar a Focus Business &rarr;</a>',
+    '</td></tr></table>',
+    '<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;background:#0a1829;border:1px solid #283b52;border-radius:12px;">',
+    '<tr><td style="padding:18px 20px;color:#c7d3e1;font-size:14px;line-height:1.6;">',
+    '<strong style="color:#ffffff;">Válido durante 15 minutos</strong><br>El enlace solo funciona una vez. Al utilizarlo se cerrará cualquier sesión anterior asociada a este correo.',
+    '</td></tr></table>',
+    '<p style="margin:0 0 8px;color:#8fa2b8;font-size:12px;line-height:1.5;">Si el botón no funciona, copia y pega esta dirección en el navegador:</p>',
+    '<p style="margin:0;word-break:break-all;color:#e7b93f;font-size:12px;line-height:1.6;">' + safeUrl + '</p>',
+    '<p style="margin:26px 0 0;color:#8295aa;font-size:12px;line-height:1.6;">No compartas ni reenvíes este enlace. Si no solicitaste el acceso, puedes ignorar este mensaje con seguridad.</p>',
+    '</td></tr>',
+    '<tr><td style="padding:20px 38px;background:#0a1829;border-top:1px solid #263950;color:#7890a8;font-size:11px;line-height:1.5;">Focus Business &middot; Portal de Prospección &middot; Focus Viral Radar</td></tr>',
+    '</table>',
+    '</td></tr></table>',
+    '</body></html>',
+  ].join("");
+}
+
+function escapeEmailHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function authorizePortalEmailSending() {
+  return MailApp.getRemainingDailyQuota();
 }
 
 function ensureClientAccess(email) {

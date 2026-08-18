@@ -170,6 +170,15 @@ test("requires a one-time magic-link session before opening the portal", async (
   const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
   const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
   assert.match(access, /api\/auth\/request-link/);
+  assert.match(access, /Prospección/);
+  assert.match(access, /Focus Viral Radar/);
+  assert.match(access, /Leads y clientes · Administración/);
+  assert.match(access, /access-\$\{activeDestination\.theme\}/);
+  assert.match(access, /Administración de clientes/);
+  assert.match(access, /PORTAL DE PROSPECCIÓN/);
+  assert.match(access, /ADMINISTRADOR/);
+  assert.match(access, /name="destination"/);
+  assert.match(access, /radar\.focusbusinesslab\.es/);
   assert.doesNotMatch(access, /type="password"/i);
   assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
   assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
@@ -205,6 +214,10 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(onboardingRoute, /passwordStoredInSheets: false/);
   assert.match(appsScript, /ensureClientAccess/);
   assert.match(appsScript, /sendMagicLogin/);
+  assert.match(appsScript, /htmlBody: accessEmailHtml\(magicUrl\)/);
+  assert.match(appsScript, /Entrar a Focus Business/);
+  assert.match(appsScript, /Válido durante 15 minutos/);
+  assert.match(appsScript, /escapeEmailHtml/);
   assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal|sendPasswordSetup/);
 });
 

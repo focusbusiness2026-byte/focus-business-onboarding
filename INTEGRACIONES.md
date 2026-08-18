@@ -34,6 +34,7 @@ El archivo fuente es `google-apps-script/Code.gs`. Debe publicarse como aplicaci
 - Ejecutar como el propietario de la hoja.
 - Permitir acceso a cualquier usuario; el token protege las lecturas y escrituras.
 - Mantener en la fila 1 de `Onboarding` los 138 encabezados definidos por `ONBOARDING_HEADERS`.
+- Antes del primer envío de enlaces de acceso, ejecutar una vez `authorizePortalEmailSending()` desde el editor con la cuenta propietaria y aceptar el permiso oficial de Google para enviar correo. La función solo consulta la cuota disponible y no envía mensajes.
 
 Los 42 encabezados nuevos se añaden después de los 96 existentes para preservar las filas actuales. Incluyen campaña, landing/VSL, accesos de Meta, regiones, WhatsApp, llamadas y dominio/subdominio. `ensureOnboardingHeaders` añade automáticamente solo las columnas finales que falten. Si detecta otro orden, crea una pestaña de respaldo antes de reorganizar por nombre. También puede ejecutarse manualmente `migrateOnboardingHeaders()` después de revisar la hoja.
 
