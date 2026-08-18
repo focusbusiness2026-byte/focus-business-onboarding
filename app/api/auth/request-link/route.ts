@@ -19,17 +19,21 @@ async function sendMagicLink(email: string, magicToken: string) {
 }
 
 export async function POST(request: Request) {
+  let stage = "read-request";
   try {
     const body = await request.json() as { email?: string; returnTo?: string };
     const email = String(body.email || "").trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ ok: false, error: "Escribe un correo válido." }, { status: 400 });
     }
+    stage = "validate-sheet-access";
     const role = await activeSheetRole(email);
     if (role) {
+      stage = "create-one-time-link";
       const magic = await createMagicLogin({ email, role, returnTo: safePortalDestination(body.returnTo) });
       if (magic.magicToken) {
         try {
+          stage = "send-access-email";
           await sendMagicLink(email, magic.magicToken);
         } catch (error) {
           await invalidateMagicLogin(magic.magicToken);
@@ -41,7 +45,9 @@ export async function POST(request: Request) {
       ok: true,
       message: "Si el correo está activo, recibirás un enlace de acceso válido durante 15 minutos.",
     });
-  } catch {
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : "Error desconocido";
+    console.error("portal_access_request_failed", { stage, reason });
     return NextResponse.json({ ok: false, error: "No se pudo procesar la solicitud ahora. Inténtalo de nuevo." }, { status: 502 });
   }
 }
