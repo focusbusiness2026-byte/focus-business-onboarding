@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-html-link-for-pages */
 
-import { FormEvent, useState } from "react";
+import { useEffect, useState } from "react";
 
 type RecordRow = Record<string, string | boolean>;
 type PortalResponse = {
@@ -64,11 +64,10 @@ const detailGroups = [
 ] as const;
 
 export default function PortalClient() {
-  const [email, setEmail] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
   const [data, setData] = useState<PortalResponse | null>(null);
   const [selected, setSelected] = useState<RecordRow | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [deletingId, setDeletingId] = useState("");
   const [copiedField, setCopiedField] = useState("");
   const [error, setError] = useState("");
@@ -81,28 +80,27 @@ export default function PortalClient() {
       .filter(({ value }) => value !== ""),
   })).filter((group) => group.step === "REG" || /^\d/.test(group.step) || group.values.length > 0) : [];
 
-  async function enterPortal(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setError("");
-    setLoading(true);
-    try {
-      const response = await fetch("/api/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
-      });
-      const result = (await response.json()) as PortalResponse;
-      if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo abrir el portal.");
-      setCurrentEmail(result.email || email.trim().toLowerCase());
-      setData(result);
-    } catch (portalError) {
-      setError(portalError instanceof Error ? portalError.message : "No se pudo abrir el portal.");
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/portal", { method: "POST" });
+        const result = (await response.json()) as PortalResponse;
+        if (!cancelled && response.ok && result.ok) {
+          setCurrentEmail(result.email || "");
+          setData(result);
+        }
+      } catch {
+        // La pantalla de acceso se muestra debajo cuando no hay una sesión válida.
+      } finally {
+        if (!cancelled) setSessionChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
-  function changeEmail() {
+  async function changeEmail() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setCurrentEmail("");
     setData(null);
     setSelected(null);
@@ -129,7 +127,7 @@ export default function PortalClient() {
       const response = await fetch("/api/portal", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: currentEmail, id }),
+        body: JSON.stringify({ id }),
       });
       const result = (await response.json()) as PortalResponse;
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo borrar el registro.");
@@ -151,12 +149,9 @@ export default function PortalClient() {
         <section className="access-card">
           <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
           <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
-          <h1>Ingresa tu correo</h1>
-          <p className="intro">Escribe el correo autorizado en la pestaña Accesos de la hoja de cálculo.</p>
-          <form className="access-form" onSubmit={enterPortal}>
-            <label className="input"><span>Correo autorizado</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nombre@empresa.com" autoComplete="email" required /></label>
-            <button className="primary access-button" type="submit" disabled={loading}>{loading ? "Verificando…" : "Entrar al portal →"}</button>
-          </form>
+          <h1>Acceso al portal</h1>
+          <p className="intro">{sessionChecked ? "Solicita un enlace de acceso al correo registrado. Solo funcionará una vez y caducará en 15 minutos." : "Comprobando tu sesión antes de mostrar el enlace de acceso…"}</p>
+          {sessionChecked && <a className="primary access-button" href="/access?return_to=https%3A%2F%2Fonboarding.focusbusinesslab.es%2Fportal">Enviar enlace de acceso →</a>}
           {error && <p className="access-error" role="alert">{error}</p>}
           <p className="access-note">¿Necesitas registrar una empresa? <a href="/">Abre el formulario público.</a></p>
         </section>

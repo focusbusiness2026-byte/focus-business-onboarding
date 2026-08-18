@@ -8,6 +8,13 @@
       "when": 1786057124684,
       "tag": "0000_mean_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1787058763491,
+      "tag": "0001_premium_the_professor",
+      "breakpoints": true
     }
   ]
 }
