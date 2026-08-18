@@ -13,11 +13,12 @@ const safeClientKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9._
 export function buildDownstreamProfile(payload: FormPayload, onboardingId: string) {
   const company = text(payload.companyName);
   const sectors = list(payload.sectors);
-  const services = list(payload.services);
+  const priorityServices = list(payload.mainService).map((service) => service === "Otro" ? text(payload.mainServiceOther) || service : service);
+  const services = [...new Set([...priorityServices, ...list(payload.services).map((service) => service === "Otro" ? text(payload.servicesOther) || service : service)])];
   const countries = list(payload.targetCountries).length ? list(payload.targetCountries) : list(payload.geographies);
   const audience = list(payload.targetClientTypes).length ? list(payload.targetClientTypes) : list(payload.audience);
   const activity = text(payload.activityOther) || text(payload.activity);
-  const offer = text(payload.mainService) || services[0] || "";
+  const offer = priorityServices.join(", ") || services[0] || "";
   const profile = {
     schema_version: 1,
     onboarding_id: onboardingId,

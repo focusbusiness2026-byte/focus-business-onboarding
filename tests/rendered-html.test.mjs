@@ -37,12 +37,17 @@ test("renders the public Focus Business onboarding form", async () => {
 test("defines detailed prospecting and safe subaccount preparation fields", async () => {
   const page = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   const mapping = await readFile(new URL("../lib/onboarding.ts", import.meta.url), "utf8");
+  const downstream = await readFile(new URL("../lib/downstream-profile.ts", import.meta.url), "utf8");
+  const appsScript = await readFile(new URL("../google-apps-script/Code.gs", import.meta.url), "utf8");
   assert.match(page, /Ciudad objetivo principal/);
   assert.match(page, /Tipos de cliente objetivo/);
   assert.match(page, /Exclusiones de prospección/);
   assert.match(page, /Capacidad mensual para nuevos proyectos/);
   assert.match(page, /Casos de éxito o portafolio/);
   assert.match(page, /Empresas de referencia/);
+  assert.match(page, /Servicios prioritarios para esta prospección \(selecciona uno o varios\)/);
+  assert.match(page, /field="mainService".*otherField="mainServiceOther"/);
+  assert.match(page, /Otros servicios que también quieres impulsar \(opcional\)/);
   assert.match(page, /Puedes seleccionar un máximo de 3 sectores prioritarios/);
   assert.match(page, /Preguntas que quieres hacer a tus leads o prospectos/);
   assert.match(page, /Objetivo y público de la campaña/);
@@ -70,6 +75,10 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(mapping, /"Uso VSL"/);
   assert.match(mapping, /"Regiones objetivo"/);
   assert.match(mapping, /"Acceso Meta Business"/);
+  assert.match(mapping, /selectionWithOther\(data\.mainService, data\.mainServiceOther\)/);
+  assert.match(appsScript, /withOther\(data\.mainService, data\.mainServiceOther\)/);
+  assert.match(downstream, /priorityServices\.join\(", "\)/);
+  assert.match(downstream, /new Set\(\[\.\.\.priorityServices/);
 });
 
 test("keeps optional choices clear and removes newsletter", async () => {
@@ -139,9 +148,9 @@ test("renders a public portal access screen for anonymous visitors", async () =>
   const response = await render("/portal");
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Ingresa tu correo/);
-  assert.match(html, /Correo autorizado/);
-  assert.match(html, /Entrar al portal/);
+  assert.match(html, /Acceso al portal/);
+  assert.match(html, /enlace de acceso/i);
+  assert.doesNotMatch(html, /type="password"/i);
   assert.match(html, /formulario público/);
 });
 
@@ -150,15 +159,25 @@ test("allows an authorized portal user to delete a record", async () => {
   assert.match(source, /Borrar lead/);
   assert.match(source, /method: "DELETE"/);
   assert.match(source, /Esta acción no se puede deshacer/);
-  assert.match(source, /JSON.stringify\(\{ email: currentEmail, id \}\)/);
+  assert.match(source, /JSON.stringify\(\{ id \}\)/);
 });
 
-test("opens the portal directly with an authorized email", async () => {
+test("requires a one-time magic-link session before opening the portal", async () => {
   const client = await readFile(new URL("../app/portal/portal-client.tsx", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/portal/route.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/portal/page.tsx", import.meta.url), "utf8");
-  assert.match(client, /body: JSON.stringify\(\{ email: email\.trim\(\) \}\)/);
-  assert.match(route, /accessFor\(body\.email\)/);
+  const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
+  const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
+  const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
+  assert.match(access, /api\/auth\/request-link/);
+  assert.doesNotMatch(access, /type="password"/i);
+  assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
+  assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
+  assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
+  assert.match(consume, /activeSheetRole\(email\)/);
+  assert.match(consume, /invalidateMagicLogin\(rawToken\)/);
+  assert.match(route, /introspectPortalSession\(portalSessionFromRequest\(request\)\)/);
+  assert.doesNotMatch(route, /accessFor\(body\.email\)/);
   assert.doesNotMatch(`${client}\n${route}\n${page}`, /signin-with-|signout-with-/);
 });
 
@@ -181,6 +200,12 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(appsScript, /migrateOnboardingHeaders/);
   assert.match(onboardingRoute, /validateSubmission\(payload\)/);
   assert.match(onboardingRoute, /El formulario no admite contraseñas, tokens, claves API ni claves privadas/);
+  assert.match(onboardingRoute, /const payload = \(body\.onboarding/);
+  assert.match(onboardingRoute, /passwordCollected: false/);
+  assert.match(onboardingRoute, /passwordStoredInSheets: false/);
+  assert.match(appsScript, /ensureClientAccess/);
+  assert.match(appsScript, /sendMagicLogin/);
+  assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal|sendPasswordSetup/);
 });
 
 test("keeps the legacy D1 export disabled", async () => {
@@ -197,7 +222,9 @@ test("accepts optional informational fields but requires final authorizations", 
   assert.match((await incomplete.json()).error, /confirmaciones y autorizaciones obligatorias/);
 
   const authorizedMinimal = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ accuracy: true, terms: true, ghlPreparationAuthorization: true }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
+      onboarding: { contactEmail: "persona@example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true },
+    }),
   }));
   assert.equal(authorizedMinimal.status, 502);
   assert.match((await authorizedMinimal.json()).error, /Google Sheets no está configurado/);
@@ -212,7 +239,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   const textFields = [
     "companyName","legalName","ownerName","businessEmail","contactPhone","website","activity","location",
     "legalAddress","legalCity","legalCountry","timezone","primaryLanguage","teamSize","description",
-    "billingLegalName","billingTaxId","billingAddress","billingEmail","mainService","ticket","priceModel",
+    "billingLegalName","billingTaxId","billingAddress","billingEmail","ticket","priceModel",
     "monthlyCapacity","targetCity","targetRegion","idealCompanySize","idealProfileDetail","decisionMaker",
     "minimumBudget","prospectExclusions","prospectPreferences","additionalLeadQuestions","landingCopyOwner","landingCopyBrief","responseTime",
     "assignment","salesCycle","qualification","contactName","contactRole","contactEmail","initialTeamRoles",
@@ -222,7 +249,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   const payload = Object.fromEntries(textFields.map((field) => [field, "Dato de prueba"]));
   Object.assign(payload, {
     businessEmail: "empresa@example.test", billingEmail: "facturacion@example.test", contactEmail: "persona@example.test",
-    website: "https://example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true,
+    website: "https://example.test", mainService: ["Vídeo corporativo", "Podcast"], accuracy: true, terms: true, ghlPreparationAuthorization: true,
   });
   for (const field of ["services","audience","sectors","geographies","targetCountries","targetClientTypes","objectives","channels","leadFields","toolsInUse","toolsToConnect","workflowAutomations","whatsappAutomations","emailAutomations","adPlatforms"]) payload[field] = ["Opción de prueba"];
   payload.channels = ["Landing pages"];
@@ -230,14 +257,14 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   payload.landingCopyBrief = "Referencia de campaña y CTA: Solicitar presupuesto";
   payload.sectors = ["Tecnología", "Salud", "Industria"];
   const response = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(response.status, 502);
   assert.match((await response.json()).error, /Google Sheets no está configurado/);
 
   payload.sectors = ["Tecnología", "Salud", "Industria", "Educación"];
   const sectorLimitResponse = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(sectorLimitResponse.status, 400);
   assert.match((await sectorLimitResponse.json()).error, /máximo de 3 sectores prioritarios/);
@@ -245,7 +272,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
 
   payload.prospectPreferences = "api_key=1234567890abcdef";
   const secretResponse = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(secretResponse.status, 400);
   assert.match((await secretResponse.json()).error, /no admite contraseñas, tokens, claves API ni claves privadas/);

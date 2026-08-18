@@ -34,14 +34,98 @@ function doPost(e) {
       if (!user) return json({ ok: false, error: "Acceso revocado o no autorizado" });
       return deleteRecord(data.id, user);
     }
+    if (data.action === "sendMagicLogin") {
+      return sendMagicLogin(data.email, data.magicUrl);
+    }
     const sheet = onboardingSheet();
     const id = `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
     const values = ONBOARDING_HEADERS.map((header) => safeCellValue(valueFor(header, { ...data, _recordId: id })));
     sheet.appendRow(values);
+    ensureClientAccess(data.contactEmail || data.businessEmail || "");
     return json({ ok: true, id, row: sheet.getLastRow() });
   } catch (error) {
     return json({ ok: false, error: String(error && error.message ? error.message : error) });
   }
+}
+
+function sendMagicLogin(email, magicUrl) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!findActiveUser(normalized)) return json({ ok: false, error: "El correo no está activo en Accesos" });
+  if (!/^https:\/\/onboarding\.focusbusinesslab\.es\/magic-login\?token=[A-Za-z0-9_-]+$/.test(String(magicUrl || ""))) {
+    return json({ ok: false, error: "Enlace de acceso no permitido" });
+  }
+  MailApp.sendEmail({
+    to: normalized,
+    subject: "Tu enlace de acceso a Focus Business",
+    body: [
+      "Abre este enlace para acceder a los portales de Focus Business:",
+      "",
+      String(magicUrl),
+      "",
+      "El enlace caduca en 15 minutos y solo funciona una vez. Al utilizarlo se cerrará cualquier sesión anterior asociada a este correo.",
+      "Si no solicitaste este acceso, puedes ignorar el mensaje.",
+    ].join("\n"),
+    name: "Focus Business",
+  });
+  return json({ ok: true });
+}
+
+function ensureClientAccess(email) {
+  const normalized = String(email || "").trim().toLowerCase();
+  if (!normalized) return;
+  const sheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ACCESS_TAB);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0].map((value) => String(value).trim());
+  const emailIndex = headers.indexOf("Correo autorizado");
+  const roleIndex = headers.indexOf("Rol");
+  const statusIndex = headers.indexOf("Estado");
+  const updatedIndex = headers.indexOf("Última actualización");
+  const assignedIndex = headers.indexOf("Raspados asignados");
+  const usedIndex = headers.indexOf("Raspados usados");
+  const availableIndex = headers.indexOf("Raspados disponibles");
+  const percentageIndex = headers.indexOf("% disponible");
+  const quotaStatusIndex = headers.indexOf("Estado cuota");
+  if (emailIndex < 0 || roleIndex < 0 || statusIndex < 0) {
+    throw new Error("La pestaña Accesos debe contener Correo autorizado, Rol y Estado");
+  }
+  const existingIndex = values.findIndex((row, index) => index > 0 && String(row[emailIndex]).trim().toLowerCase() === normalized);
+  if (existingIndex > 0) {
+    const role = String(values[existingIndex][roleIndex] || "").trim();
+    if (!role) sheet.getRange(existingIndex + 1, roleIndex + 1).setValue("Cliente");
+    sheet.getRange(existingIndex + 1, statusIndex + 1).setValue("Activo");
+    if (updatedIndex >= 0) sheet.getRange(existingIndex + 1, updatedIndex + 1).setValue(new Date());
+    return;
+  }
+  const row = headers.map((header) => {
+    if (header === "Correo autorizado") return normalized;
+    if (header === "Rol") return "Cliente";
+    if (header === "Estado") return "Activo";
+    if (header === "Última actualización") return new Date();
+    if (header === "Raspados usados") return 0;
+    return "";
+  });
+  sheet.appendRow(row);
+  const newRow = sheet.getLastRow();
+  if (assignedIndex >= 0 && usedIndex >= 0 && availableIndex >= 0) {
+    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow},0)`);
+  }
+  if (assignedIndex >= 0 && availableIndex >= 0 && percentageIndex >= 0) {
+    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow},0)`);
+  }
+  if (availableIndex >= 0 && percentageIndex >= 0 && quotaStatusIndex >= 0) {
+    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0,"Agotado",IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%,"Crítico",IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%,"Atención","Disponible")))`);
+  }
+}
+
+function columnLetter(column) {
+  let value = Number(column);
+  let result = "";
+  while (value > 0) {
+    const remainder = (value - 1) % 26;
+    result = String.fromCharCode(65 + remainder) + result;
+    value = Math.floor((value - 1) / 26);
+  }
+  return result;
 }
 
 function deleteRecord(id, user) {
@@ -72,7 +156,7 @@ function valueFor(header, data) {
     "Color marca": () => data.brandPrimaryColor || data.brandColor,
     "Logo URL": () => data.logoUrl,
     "Tono marca": () => data.formality,
-    "Servicio prioritario": () => data.mainService,
+    "Servicio prioritario": () => withOther(data.mainService, data.mainServiceOther),
     "Ticket medio": () => data.ticket,
     "Modelo de precio": () => data.priceModel,
     "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => withOther(data.geographies, data.geographiesOther),

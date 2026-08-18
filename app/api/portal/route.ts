@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { introspectPortalSession } from "@/lib/portal-auth";
+import { portalSessionFromRequest } from "@/lib/portal-cookie";
 
 type SheetPortalResponse = {
   ok?: boolean;
@@ -35,8 +37,9 @@ async function accessFor(email: unknown) {
 }
 
 export async function POST(request: Request) {
-  const body = await request.json() as { email?: string };
-  const access = await accessFor(body.email);
+  const identity = await introspectPortalSession(portalSessionFromRequest(request));
+  if (!identity) return NextResponse.json({ ok: false, error: "Solicita y utiliza un enlace de acceso válido." }, { status: 401 });
+  const access = await accessFor(identity.email);
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Este correo no está autorizado en la pestaña Accesos." }, { status: 403 });
   try {
@@ -47,8 +50,10 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const body = await request.json() as { email?: string; id?: string };
-  const access = await accessFor(body.email);
+  const body = await request.json() as { id?: string };
+  const identity = await introspectPortalSession(portalSessionFromRequest(request));
+  if (!identity) return NextResponse.json({ ok: false, error: "Sesión no válida." }, { status: 401 });
+  const access = await accessFor(identity.email);
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Correo no autorizado." }, { status: 403 });
   const id = String(body.id || "").trim();
