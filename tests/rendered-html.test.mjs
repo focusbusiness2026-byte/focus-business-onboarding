@@ -205,6 +205,10 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(onboardingRoute, /passwordStoredInSheets: false/);
   assert.match(appsScript, /ensureClientAccess/);
   assert.match(appsScript, /sendMagicLogin/);
+  assert.match(appsScript, /htmlBody: accessEmailHtml\(magicUrl\)/);
+  assert.match(appsScript, /Entrar a Focus Business/);
+  assert.match(appsScript, /Válido durante 15 minutos/);
+  assert.match(appsScript, /escapeEmailHtml/);
   assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal|sendPasswordSetup/);
 });
 
