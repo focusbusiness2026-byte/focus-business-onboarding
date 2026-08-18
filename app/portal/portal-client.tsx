@@ -65,6 +65,7 @@ const detailGroups = [
 
 export default function PortalClient() {
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [currentEmail, setCurrentEmail] = useState("");
   const [data, setData] = useState<PortalResponse | null>(null);
   const [selected, setSelected] = useState<RecordRow | null>(null);
@@ -86,14 +87,18 @@ export default function PortalClient() {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("/api/portal", {
+      const loginResponse = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim() }),
+        body: JSON.stringify({ email: email.trim(), password }),
       });
+      const loginResult = (await loginResponse.json()) as PortalResponse;
+      if (!loginResponse.ok || !loginResult.ok) throw new Error(loginResult.error || "No se pudo iniciar sesión.");
+      const response = await fetch("/api/portal", { method: "POST" });
       const result = (await response.json()) as PortalResponse;
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo abrir el portal.");
       setCurrentEmail(result.email || email.trim().toLowerCase());
+      setPassword("");
       setData(result);
     } catch (portalError) {
       setError(portalError instanceof Error ? portalError.message : "No se pudo abrir el portal.");
@@ -102,7 +107,8 @@ export default function PortalClient() {
     }
   }
 
-  function changeEmail() {
+  async function changeEmail() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
     setCurrentEmail("");
     setData(null);
     setSelected(null);
@@ -129,7 +135,7 @@ export default function PortalClient() {
       const response = await fetch("/api/portal", {
         method: "DELETE",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: currentEmail, id }),
+        body: JSON.stringify({ id }),
       });
       const result = (await response.json()) as PortalResponse;
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo borrar el registro.");
@@ -151,14 +157,15 @@ export default function PortalClient() {
         <section className="access-card">
           <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
           <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
-          <h1>Ingresa tu correo</h1>
-          <p className="intro">Escribe el correo autorizado en la pestaña Accesos de la hoja de cálculo.</p>
+          <h1>Acceso al portal</h1>
+          <p className="intro">Utiliza el correo confirmado durante el registro y la contraseña que creaste.</p>
           <form className="access-form" onSubmit={enterPortal}>
-            <label className="input"><span>Correo autorizado</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nombre@empresa.com" autoComplete="email" required /></label>
+            <label className="input"><span>Correo</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="nombre@empresa.com" autoComplete="username" required /></label>
+            <label className="input"><span>Contraseña</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Tu contraseña" autoComplete="current-password" required minLength={6} maxLength={128} /></label>
             <button className="primary access-button" type="submit" disabled={loading}>{loading ? "Verificando…" : "Entrar al portal →"}</button>
           </form>
           {error && <p className="access-error" role="alert">{error}</p>}
-          <p className="access-note">¿Necesitas registrar una empresa? <a href="/">Abre el formulario público.</a></p>
+          <p className="access-note">Primero debes confirmar el enlace recibido por correo. ¿Necesitas registrar una empresa? <a href="/">Abre el formulario público.</a></p>
         </section>
       </main>
     );

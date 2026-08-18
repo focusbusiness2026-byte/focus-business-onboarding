@@ -79,6 +79,27 @@ async function saveToGoogleSheets(payload: Record<string, unknown>) {
   return result;
 }
 
+async function sendVerificationEmail(email: string, verificationToken: string) {
+  const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
+  const token = process.env.FOCUS_PORTAL_TOKEN;
+  const publicOrigin = process.env.PUBLIC_ONBOARDING_ORIGIN || "https://onboarding.focusbusinesslab.es";
+  if (!url || !token) throw new Error("El envío de confirmación no está configurado.");
+  const verificationUrl = new URL("/api/auth/verify", publicOrigin);
+  verificationUrl.searchParams.set("token", verificationToken);
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "sendAccountVerification",
+      email,
+      verificationUrl: verificationUrl.toString(),
+      _focusToken: token,
+    }),
+  });
+  const result = await response.json() as { ok?: boolean; error?: string };
+  if (!response.ok || result.ok !== true) throw new Error(result.error || "No se pudo enviar el correo de confirmación.");
+}
+
 async function notifyProspection(onboardingId: string) {
   const url = process.env.PROSPECTION_TRIGGER_URL;
   const token = process.env.PROSPECTION_TRIGGER_TOKEN;
@@ -115,10 +136,33 @@ async function notifyViralRadar(profile: ReturnType<typeof buildDownstreamProfil
 
 export async function POST(request: Request) {
   try {
-    const payload = await request.json() as Record<string, unknown>;
+    const body = await request.json() as Record<string, unknown>;
+    const payload = (body.onboarding && typeof body.onboarding === "object" && !Array.isArray(body.onboarding)
+      ? body.onboarding
+      : body) as Record<string, unknown>;
+    const account = (body.account && typeof body.account === "object" && !Array.isArray(body.account)
+      ? body.account
+      : null) as { email?: unknown; password?: unknown; passwordConfirmation?: unknown } | null;
     validateSubmission(payload);
+    if (!account) throw new SubmissionValidationError("Configura el correo y la contraseña de acceso al portal.");
+    const accountEmail = String(account.email || "").trim().toLowerCase();
+    const contactEmail = String(payload.contactEmail || payload.businessEmail || "").trim().toLowerCase();
+    if (!contactEmail || accountEmail !== contactEmail) {
+      throw new SubmissionValidationError("El correo de acceso debe coincidir con el correo de contacto del formulario.");
+    }
+    if (String(account.password || "") !== String(account.passwordConfirmation || "")) {
+      throw new SubmissionValidationError("Las dos contraseñas no coinciden.");
+    }
     const sheets = await saveToGoogleSheets(payload);
     const onboardingId = String(sheets.id || "");
+    const { registerPortalUser } = await import("@/lib/portal-auth");
+    const accountRegistration = await registerPortalUser({
+      email: accountEmail,
+      password: String(account.password || ""),
+      onboardingId,
+      role: "Cliente",
+    });
+    await sendVerificationEmail(accountRegistration.email, accountRegistration.verificationToken);
     const downstreamProfile = buildDownstreamProfile(payload, onboardingId);
     const [prospection, viralRadar] = await Promise.all([
       notifyProspection(onboardingId),
@@ -130,6 +174,7 @@ export async function POST(request: Request) {
       sheets: { configured: true },
       prospection,
       viralRadar,
+      account: { email: accountRegistration.email, verificationSent: true, passwordStoredInSheets: false },
       downstream: { schemaVersion: downstreamProfile.schema_version, externalSearchStarted: false },
     });
   } catch (error) {
