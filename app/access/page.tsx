@@ -23,19 +23,9 @@ const PORTAL_DESTINATIONS = [
     heading: "Acceso a Focus Viral Radar",
     badge: "RADAR",
   },
-  {
-    value: "https://onboarding.focusbusinesslab.es/portal",
-    title: "Leads y clientes · Administración",
-    description: "Revisa como administrador la información registrada por cada cliente.",
-    theme: "admin",
-    eyebrow: "ÁREA ADMINISTRATIVA",
-    heading: "Administración de clientes",
-    badge: "ADMINISTRADOR",
-  },
 ] as const;
 
 const ALLOWED_DESTINATIONS = new Set([
-  "https://onboarding.focusbusinesslab.es/portal",
   "https://prospeccion.focusbusinesslab.es/portal",
   "https://radar.focusbusinesslab.es/",
 ]);
@@ -92,7 +82,7 @@ export default function SharedAccessPage() {
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
     <div className="access-context"><p className="eyebrow">{activeDestination.eyebrow}</p><span className="access-destination-badge">{activeDestination.badge}</span></div>
     <h1>{activeDestination.heading}</h1>
-    <p className="intro">Escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez.</p>
+    <p className="intro">Elige Prospección o Focus Viral Radar y escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez.</p>
     <form className="access-form" onSubmit={requestLink}>
       <fieldset className="portal-destinations">
         <legend>¿A dónde quieres entrar?</legend>

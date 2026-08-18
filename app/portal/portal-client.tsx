@@ -151,7 +151,7 @@ export default function PortalClient() {
           <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
           <h1>Acceso al portal</h1>
           <p className="intro">{sessionChecked ? "Solicita un enlace de acceso al correo registrado. Solo funcionará una vez y caducará en 15 minutos." : "Comprobando tu sesión antes de mostrar el enlace de acceso…"}</p>
-          {sessionChecked && <a className="primary access-button" href="/access?return_to=https%3A%2F%2Fonboarding.focusbusinesslab.es%2Fportal">Enviar enlace de acceso →</a>}
+          {sessionChecked && <a className="primary access-button" href="/admin-access">Enviar enlace administrativo →</a>}
           {error && <p className="access-error" role="alert">{error}</p>}
           <p className="access-note">¿Necesitas registrar una empresa? <a href="/">Abre el formulario público.</a></p>
         </section>
