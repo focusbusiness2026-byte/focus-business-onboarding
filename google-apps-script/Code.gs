@@ -70,6 +70,10 @@ function sendMagicLogin(email, magicUrl) {
   return json({ ok: true });
 }
 
+function authorizePortalEmailSending() {
+  return MailApp.getRemainingDailyQuota();
+}
+
 function ensureClientAccess(email) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!normalized) return;
