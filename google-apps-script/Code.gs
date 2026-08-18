@@ -34,11 +34,8 @@ function doPost(e) {
       if (!user) return json({ ok: false, error: "Acceso revocado o no autorizado" });
       return deleteRecord(data.id, user);
     }
-    if (data.action === "sendAccountVerification") {
-      return sendAccountVerification(data.email, data.verificationUrl);
-    }
-    if (data.action === "sendPasswordSetup") {
-      return sendPasswordSetup(data.email, data.setupUrl);
+    if (data.action === "sendMagicLogin") {
+      return sendMagicLogin(data.email, data.magicUrl);
     }
     const sheet = onboardingSheet();
     const id = `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
@@ -51,42 +48,22 @@ function doPost(e) {
   }
 }
 
-function sendPasswordSetup(email, setupUrl) {
+function sendMagicLogin(email, magicUrl) {
   const normalized = String(email || "").trim().toLowerCase();
   if (!findActiveUser(normalized)) return json({ ok: false, error: "El correo no está activo en Accesos" });
-  if (!/^https:\/\/onboarding\.focusbusinesslab\.es\/set-password\?token=[A-Za-z0-9_-]+$/.test(String(setupUrl || ""))) {
-    return json({ ok: false, error: "Enlace de creación de contraseña no permitido" });
+  if (!/^https:\/\/onboarding\.focusbusinesslab\.es\/magic-login\?token=[A-Za-z0-9_-]+$/.test(String(magicUrl || ""))) {
+    return json({ ok: false, error: "Enlace de acceso no permitido" });
   }
   MailApp.sendEmail({
     to: normalized,
-    subject: "Crea o recupera tu contraseña de Focus Business",
+    subject: "Tu enlace de acceso a Focus Business",
     body: [
-      "Usa este enlace de un solo uso para crear o cambiar tu contraseña de acceso:",
+      "Abre este enlace para acceder a los portales de Focus Business:",
       "",
-      String(setupUrl),
+      String(magicUrl),
       "",
-      "El enlace caduca en 24 horas. Si no solicitaste este cambio, puedes ignorar el mensaje.",
-    ].join("\n"),
-    name: "Focus Business",
-  });
-  return json({ ok: true });
-}
-
-function sendAccountVerification(email, verificationUrl) {
-  const normalized = String(email || "").trim().toLowerCase();
-  if (!findActiveUser(normalized)) return json({ ok: false, error: "El correo no está activo en Accesos" });
-  if (!/^https:\/\/onboarding\.focusbusinesslab\.es\/api\/auth\/verify\?token=[A-Za-z0-9_-]+$/.test(String(verificationUrl || ""))) {
-    return json({ ok: false, error: "Enlace de confirmación no permitido" });
-  }
-  MailApp.sendEmail({
-    to: normalized,
-    subject: "Confirma tu acceso a Focus Business",
-    body: [
-      "Confirma el correo de tu cuenta para acceder a los portales de Focus Business:",
-      "",
-      String(verificationUrl),
-      "",
-      "El enlace caduca en 24 horas. Focus Business nunca te pedirá que envíes tu contraseña por correo.",
+      "El enlace caduca en 15 minutos y solo funciona una vez. Al utilizarlo se cerrará cualquier sesión anterior asociada a este correo.",
+      "Si no solicitaste este acceso, puedes ignorar el mensaje.",
     ].join("\n"),
     name: "Focus Business",
   });

@@ -20,15 +20,10 @@ export const portalUsers = sqliteTable(
   "portal_users",
   {
     email: text("email").primaryKey(),
-    passwordHash: text("password_hash").notNull(),
-    passwordSalt: text("password_salt").notNull(),
-    passwordIterations: integer("password_iterations").notNull().default(600000),
     role: text("role").notNull().default("Cliente"),
     active: integer("active", { mode: "boolean" }).notNull().default(true),
     emailVerifiedAt: text("email_verified_at"),
     onboardingId: text("onboarding_id"),
-    failedAttempts: integer("failed_attempts").notNull().default(0),
-    lockedUntil: text("locked_until"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
@@ -47,15 +42,16 @@ export const portalSessions = sqliteTable(
   (table) => [index("idx_portal_sessions_email").on(table.email)],
 );
 
-export const portalVerificationTokens = sqliteTable(
-  "portal_verification_tokens",
+export const portalMagicTokens = sqliteTable(
+  "portal_magic_tokens",
   {
     tokenHash: text("token_hash").primaryKey(),
     email: text("email").notNull(),
     purpose: text("purpose").notNull(),
+    returnTo: text("return_to").notNull(),
     expiresAt: text("expires_at").notNull(),
     consumedAt: text("consumed_at"),
     createdAt: text("created_at").notNull(),
   },
-  (table) => [index("idx_portal_verification_email").on(table.email)],
+  (table) => [index("idx_portal_magic_email").on(table.email)],
 );

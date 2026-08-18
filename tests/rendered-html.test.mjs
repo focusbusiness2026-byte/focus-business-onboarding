@@ -140,9 +140,8 @@ test("renders a public portal access screen for anonymous visitors", async () =>
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Acceso al portal/);
-  assert.match(html, /Correo/);
-  assert.match(html, /Contraseña/);
-  assert.match(html, /Entrar al portal/);
+  assert.match(html, /enlace de acceso/i);
+  assert.doesNotMatch(html, /type="password"/i);
   assert.match(html, /formulario público/);
 });
 
@@ -154,11 +153,20 @@ test("allows an authorized portal user to delete a record", async () => {
   assert.match(source, /JSON.stringify\(\{ id \}\)/);
 });
 
-test("requires a verified password session before opening the portal", async () => {
+test("requires a one-time magic-link session before opening the portal", async () => {
   const client = await readFile(new URL("../app/portal/portal-client.tsx", import.meta.url), "utf8");
   const route = await readFile(new URL("../app/api/portal/route.ts", import.meta.url), "utf8");
   const page = await readFile(new URL("../app/portal/page.tsx", import.meta.url), "utf8");
-  assert.match(client, /body: JSON.stringify\(\{ email: email\.trim\(\), password \}\)/);
+  const access = await readFile(new URL("../app/access/page.tsx", import.meta.url), "utf8");
+  const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
+  const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
+  assert.match(access, /api\/auth\/request-link/);
+  assert.doesNotMatch(access, /type="password"/i);
+  assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
+  assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
+  assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
+  assert.match(consume, /activeSheetRole\(email\)/);
+  assert.match(consume, /invalidateMagicLogin\(rawToken\)/);
   assert.match(route, /introspectPortalSession\(portalSessionFromRequest\(request\)\)/);
   assert.doesNotMatch(route, /accessFor\(body\.email\)/);
   assert.doesNotMatch(`${client}\n${route}\n${page}`, /signin-with-|signout-with-/);
@@ -184,9 +192,11 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(onboardingRoute, /validateSubmission\(payload\)/);
   assert.match(onboardingRoute, /El formulario no admite contraseñas, tokens, claves API ni claves privadas/);
   assert.match(onboardingRoute, /const payload = \(body\.onboarding/);
+  assert.match(onboardingRoute, /passwordCollected: false/);
   assert.match(onboardingRoute, /passwordStoredInSheets: false/);
   assert.match(appsScript, /ensureClientAccess/);
-  assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal/);
+  assert.match(appsScript, /sendMagicLogin/);
+  assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal|sendPasswordSetup/);
 });
 
 test("keeps the legacy D1 export disabled", async () => {
@@ -205,7 +215,6 @@ test("accepts optional informational fields but requires final authorizations", 
   const authorizedMinimal = await requestApp(new Request("http://localhost/api/onboarding", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
       onboarding: { contactEmail: "persona@example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true },
-      account: { email: "persona@example.test", password: "estudio8", passwordConfirmation: "estudio8" },
     }),
   }));
   assert.equal(authorizedMinimal.status, 502);
@@ -239,14 +248,14 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
   payload.landingCopyBrief = "Referencia de campaña y CTA: Solicitar presupuesto";
   payload.sectors = ["Tecnología", "Salud", "Industria"];
   const response = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload, account: { email: payload.contactEmail, password: "estudio8", passwordConfirmation: "estudio8" } }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(response.status, 502);
   assert.match((await response.json()).error, /Google Sheets no está configurado/);
 
   payload.sectors = ["Tecnología", "Salud", "Industria", "Educación"];
   const sectorLimitResponse = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload, account: { email: payload.contactEmail, password: "estudio8", passwordConfirmation: "estudio8" } }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(sectorLimitResponse.status, 400);
   assert.match((await sectorLimitResponse.json()).error, /máximo de 3 sectores prioritarios/);
@@ -254,7 +263,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
 
   payload.prospectPreferences = "api_key=1234567890abcdef";
   const secretResponse = await requestApp(new Request("http://localhost/api/onboarding", {
-    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload, account: { email: payload.contactEmail, password: "estudio8", passwordConfirmation: "estudio8" } }),
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(secretResponse.status, 400);
   assert.match((await secretResponse.json()).error, /no admite contraseñas, tokens, claves API ni claves privadas/);

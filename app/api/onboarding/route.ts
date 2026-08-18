@@ -79,25 +79,25 @@ async function saveToGoogleSheets(payload: Record<string, unknown>) {
   return result;
 }
 
-async function sendVerificationEmail(email: string, verificationToken: string) {
+async function sendMagicLink(email: string, magicToken: string) {
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   const token = process.env.FOCUS_PORTAL_TOKEN;
   const publicOrigin = process.env.PUBLIC_ONBOARDING_ORIGIN || "https://onboarding.focusbusinesslab.es";
-  if (!url || !token) throw new Error("El envío de confirmación no está configurado.");
-  const verificationUrl = new URL("/api/auth/verify", publicOrigin);
-  verificationUrl.searchParams.set("token", verificationToken);
+  if (!url || !token) throw new Error("El envío del enlace de acceso no está configurado.");
+  const magicUrl = new URL("/magic-login", publicOrigin);
+  magicUrl.searchParams.set("token", magicToken);
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      action: "sendAccountVerification",
+      action: "sendMagicLogin",
       email,
-      verificationUrl: verificationUrl.toString(),
+      magicUrl: magicUrl.toString(),
       _focusToken: token,
     }),
   });
   const result = await response.json() as { ok?: boolean; error?: string };
-  if (!response.ok || result.ok !== true) throw new Error(result.error || "No se pudo enviar el correo de confirmación.");
+  if (!response.ok || result.ok !== true) throw new Error(result.error || "No se pudo enviar el enlace de acceso.");
 }
 
 async function notifyProspection(onboardingId: string) {
@@ -140,29 +140,28 @@ export async function POST(request: Request) {
     const payload = (body.onboarding && typeof body.onboarding === "object" && !Array.isArray(body.onboarding)
       ? body.onboarding
       : body) as Record<string, unknown>;
-    const account = (body.account && typeof body.account === "object" && !Array.isArray(body.account)
-      ? body.account
-      : null) as { email?: unknown; password?: unknown; passwordConfirmation?: unknown } | null;
     validateSubmission(payload);
-    if (!account) throw new SubmissionValidationError("Configura el correo y la contraseña de acceso al portal.");
-    const accountEmail = String(account.email || "").trim().toLowerCase();
-    const contactEmail = String(payload.contactEmail || payload.businessEmail || "").trim().toLowerCase();
-    if (!contactEmail || accountEmail !== contactEmail) {
-      throw new SubmissionValidationError("El correo de acceso debe coincidir con el correo de contacto del formulario.");
-    }
-    if (String(account.password || "") !== String(account.passwordConfirmation || "")) {
-      throw new SubmissionValidationError("Las dos contraseñas no coinciden.");
-    }
+    const accountEmail = String(payload.contactEmail || payload.businessEmail || "").trim().toLowerCase();
+    if (!accountEmail) throw new SubmissionValidationError("Añade un correo de contacto para recibir el enlace de acceso.");
     const sheets = await saveToGoogleSheets(payload);
     const onboardingId = String(sheets.id || "");
-    const { registerPortalUser } = await import("@/lib/portal-auth");
-    const accountRegistration = await registerPortalUser({
-      email: accountEmail,
-      password: String(account.password || ""),
-      onboardingId,
-      role: "Cliente",
-    });
-    await sendVerificationEmail(accountRegistration.email, accountRegistration.verificationToken);
+    let accessLinkSent = false;
+    let issuedMagicToken = "";
+    try {
+      const { createMagicLogin } = await import("@/lib/portal-auth");
+      const access = await createMagicLogin({ email: accountEmail, onboardingId, role: "Cliente" });
+      issuedMagicToken = access.magicToken;
+      if (access.magicToken) {
+        await sendMagicLink(access.email, access.magicToken);
+        accessLinkSent = true;
+      }
+    } catch {
+      if (issuedMagicToken) {
+        const { invalidateMagicLogin } = await import("@/lib/portal-auth");
+        await invalidateMagicLogin(issuedMagicToken).catch(() => undefined);
+      }
+      accessLinkSent = false;
+    }
     const downstreamProfile = buildDownstreamProfile(payload, onboardingId);
     const [prospection, viralRadar] = await Promise.all([
       notifyProspection(onboardingId),
@@ -174,7 +173,7 @@ export async function POST(request: Request) {
       sheets: { configured: true },
       prospection,
       viralRadar,
-      account: { email: accountRegistration.email, verificationSent: true, passwordStoredInSheets: false },
+      account: { email: accountEmail, accessLinkSent, passwordCollected: false, passwordStoredInSheets: false },
       downstream: { schemaVersion: downstreamProfile.schema_version, externalSearchStarted: false },
     });
   } catch (error) {

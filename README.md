@@ -13,6 +13,7 @@ Aplicación multipaso con dos finalidades exclusivas: configurar la captación/p
 - Endpoint único para guardar el registro completo en Google Sheets.
 - Validación final de los seis pasos y rechazo defensivo de contraseñas, claves API, tokens y claves privadas.
 - Portal operativo en `/portal`; la ruta heredada `/admin` redirige allí y la exportación D1 heredada está desactivada.
+- Acceso unificado por correo mediante enlace de un solo uso: caduca en 15 minutos, se invalida al primer canje y reemplaza cualquier sesión anterior del mismo correo.
 - Vista pública de diseño del portal en `/portal-demo`, con una productora ficticia.
 
 ## Para activar las integraciones

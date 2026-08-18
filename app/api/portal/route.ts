@@ -38,7 +38,7 @@ async function accessFor(email: unknown) {
 
 export async function POST(request: Request) {
   const identity = await introspectPortalSession(portalSessionFromRequest(request));
-  if (!identity) return NextResponse.json({ ok: false, error: "Inicia sesión con tu correo y contraseña." }, { status: 401 });
+  if (!identity) return NextResponse.json({ ok: false, error: "Solicita y utiliza un enlace de acceso válido." }, { status: 401 });
   const access = await accessFor(identity.email);
   if (access.unavailable) return NextResponse.json({ ok: false, error: "No se pudo comprobar la pestaña Accesos. Inténtalo de nuevo." }, { status: 502 });
   if (!access.authorized) return NextResponse.json({ ok: false, error: "Este correo no está autorizado en la pestaña Accesos." }, { status: 403 });
