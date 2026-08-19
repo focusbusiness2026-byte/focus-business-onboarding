@@ -32,7 +32,7 @@ export default function AdminAccessPage() {
     }
   }
 
-  return <main className="access access-admin"><section className="access-card">
+  return <main className="access"><section className="access-card">
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
     <div className="access-context"><p className="eyebrow">ÁREA ADMINISTRATIVA</p><span className="access-destination-badge">ADMINISTRADOR</span></div>
     <h1>Administración de clientes</h1>
