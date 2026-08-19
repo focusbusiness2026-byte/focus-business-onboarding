@@ -173,7 +173,7 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(access, /api\/auth\/request-link/);
   assert.match(access, /Prospección/);
   assert.match(access, /Focus Viral Radar/);
-  assert.match(access, /access-\$\{activeDestination\.theme\}/);
+  assert.match(access, /<main className="access">/);
   assert.match(access, /PORTAL DE PROSPECCIÓN/);
   assert.match(access, /name="destination"/);
   assert.match(access, /radar\.focusbusinesslab\.es/);
@@ -185,6 +185,10 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(client, /href="\/admin-access"/);
   assert.match(route, /isAdminRole\(access\.role\)/);
   assert.doesNotMatch(access, /type="password"/i);
+  const globalStyles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  assert.match(globalStyles, /\.access \{ --access-accent:var\(--gold\)/);
+  assert.doesNotMatch(globalStyles, /\.access-(?:admin|radar)\s*\{\s*--access-accent/);
+  assert.doesNotMatch(`${access}\n${adminAccess}`, /access-(?:admin|radar|prospection)/);
   assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
   assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
   assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
@@ -222,6 +226,10 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(appsScript, /htmlBody: accessEmailHtml\(magicUrl\)/);
   assert.match(appsScript, /Entrar a Focus Business/);
   assert.match(appsScript, /Válido durante 15 minutos/);
+  assert.match(appsScript, /background:#06101e/);
+  assert.match(appsScript, /background:#0c1727/);
+  assert.match(appsScript, /color:#d9af43/);
+  assert.doesNotMatch(appsScript, /#e7b93f|#102036|#07111f/);
   assert.match(appsScript, /escapeEmailHtml/);
   assert.doesNotMatch(appsScript, /password_hash|Contraseña del portal|sendPasswordSetup/);
 });

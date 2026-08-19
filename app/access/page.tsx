@@ -9,7 +9,6 @@ const PORTAL_DESTINATIONS = [
     value: "https://prospeccion.focusbusinesslab.es/portal",
     title: "Prospección",
     description: "Busca, revisa y gestiona leads y ejecuciones.",
-    theme: "prospection",
     eyebrow: "PORTAL DE PROSPECCIÓN",
     heading: "Acceso a Prospección",
     badge: "PROSPECTOS",
@@ -18,7 +17,6 @@ const PORTAL_DESTINATIONS = [
     value: "https://radar.focusbusinesslab.es/",
     title: "Focus Viral Radar",
     description: "Consulta tendencias, estructuras y contenidos guardados.",
-    theme: "radar",
     eyebrow: "INTELIGENCIA CREATIVA",
     heading: "Acceso a Focus Viral Radar",
     badge: "RADAR",
@@ -78,7 +76,7 @@ export default function SharedAccessPage() {
     }
   }
 
-  return <main className={`access access-${activeDestination.theme}`}><section className="access-card">
+  return <main className="access"><section className="access-card">
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
     <div className="access-context"><p className="eyebrow">{activeDestination.eyebrow}</p><span className="access-destination-badge">{activeDestination.badge}</span></div>
     <h1>{activeDestination.heading}</h1>
