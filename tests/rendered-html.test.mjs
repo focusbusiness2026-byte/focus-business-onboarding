@@ -170,6 +170,7 @@ test("requires a one-time magic-link session before opening the portal", async (
   const adminAccess = await readFile(new URL("../app/admin-access/page.tsx", import.meta.url), "utf8");
   const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
   const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
+  const appsScriptFetch = await readFile(new URL("../lib/apps-script-fetch.ts", import.meta.url), "utf8");
   assert.match(access, /api\/auth\/request-link/);
   assert.match(access, /Prospección/);
   assert.match(access, /Focus Viral Radar/);
@@ -193,6 +194,9 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
   assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
   assert.match(consume, /activeSheetRole\(email\)/);
+  assert.match(appsScriptFetch, /redirect: "manual"/);
+  assert.match(appsScriptFetch, /https:\/\/script\.googleusercontent\.com\//);
+  assert.match(appsScriptFetch, /application\/json/);
   assert.match(consume, /invalidateMagicLogin\(rawToken\)/);
   assert.match(route, /introspectPortalSession\(portalSessionFromRequest\(request\)\)/);
   assert.doesNotMatch(route, /accessFor\(body\.email\)/);

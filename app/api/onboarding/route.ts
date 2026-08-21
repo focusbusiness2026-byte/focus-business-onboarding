@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { buildDownstreamProfile } from "@/lib/downstream-profile";
+import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
 type SheetsWriteResponse = {
   ok?: boolean;
@@ -61,18 +62,11 @@ async function saveToGoogleSheets(payload: Record<string, unknown>) {
     throw new Error("Google Sheets no está configurado. Faltan GOOGLE_SHEETS_WEBHOOK_URL o FOCUS_PORTAL_TOKEN.");
   }
 
-  const response = await fetch(url, {
+  const { response, payload: result } = await fetchAppsScriptJson<SheetsWriteResponse>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ ...payload, _focusToken: token }),
   });
-  const text = await response.text();
-  let result: SheetsWriteResponse;
-  try {
-    result = JSON.parse(text) as SheetsWriteResponse;
-  } catch {
-    throw new Error("Google Sheets devolvió una respuesta no válida.");
-  }
   if (!response.ok || result.ok !== true) {
     throw new Error(result.error || `Google Sheets devolvió el estado ${response.status}.`);
   }
@@ -86,7 +80,7 @@ async function sendMagicLink(email: string, magicToken: string) {
   if (!url || !token) throw new Error("El envío del enlace de acceso no está configurado.");
   const magicUrl = new URL("/magic-login", publicOrigin);
   magicUrl.searchParams.set("token", magicToken);
-  const response = await fetch(url, {
+  const { response, payload: result } = await fetchAppsScriptJson<{ ok?: boolean; error?: string }>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -96,7 +90,6 @@ async function sendMagicLink(email: string, magicToken: string) {
       _focusToken: token,
     }),
   });
-  const result = await response.json() as { ok?: boolean; error?: string };
   if (!response.ok || result.ok !== true) throw new Error(result.error || "No se pudo enviar el enlace de acceso.");
 }
 
