@@ -160,14 +160,51 @@ function ensureClientAccess(email) {
   sheet.appendRow(row);
   const newRow = sheet.getLastRow();
   if (assignedIndex >= 0 && usedIndex >= 0 && availableIndex >= 0) {
-    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow},0)`);
+    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow};0)`);
   }
   if (assignedIndex >= 0 && availableIndex >= 0 && percentageIndex >= 0) {
-    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow},0)`);
+    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow};0)`);
   }
   if (availableIndex >= 0 && percentageIndex >= 0 && quotaStatusIndex >= 0) {
-    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0,"Agotado",IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%,"Crítico",IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%,"Atención","Disponible")))`);
+    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible")))`);
   }
+}
+
+function syncExistingClientAccessFromOnboarding() {
+  const onboardingValues = onboardingSheet().getDataRange().getValues();
+  const onboardingHeaders = onboardingValues.shift().map((value) => String(value).trim());
+  const responsibleIndex = onboardingHeaders.indexOf("Email responsable");
+  const corporateIndex = onboardingHeaders.indexOf("Email corporativo");
+  if (responsibleIndex < 0 && corporateIndex < 0) {
+    throw new Error("Onboarding debe contener Email responsable o Email corporativo");
+  }
+
+  const accessSheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ACCESS_TAB);
+  const accessValues = accessSheet.getDataRange().getValues();
+  const accessHeaders = accessValues[0].map((value) => String(value).trim());
+  const accessEmailIndex = accessHeaders.indexOf("Correo autorizado");
+  if (accessEmailIndex < 0) throw new Error("Accesos debe contener Correo autorizado");
+
+  const existing = new Set(accessValues.slice(1)
+    .map((row) => String(row[accessEmailIndex] || "").trim().toLowerCase())
+    .filter(Boolean));
+  const candidates = new Set();
+  onboardingValues.forEach((row) => {
+    [responsibleIndex, corporateIndex].forEach((index) => {
+      if (index < 0) return;
+      const email = String(row[index] || "").trim().toLowerCase();
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) candidates.add(email);
+    });
+  });
+
+  let added = 0;
+  candidates.forEach((email) => {
+    if (existing.has(email)) return;
+    ensureClientAccess(email);
+    existing.add(email);
+    added += 1;
+  });
+  return { ok: true, reviewed: candidates.size, added, alreadyPresent: candidates.size - added };
 }
 
 function columnLetter(column) {

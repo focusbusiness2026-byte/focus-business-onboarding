@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createMagicLogin, invalidateMagicLogin, safePortalDestination } from "@/lib/portal-auth";
 import { activeSheetRole } from "@/lib/sheet-access";
+import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
 async function sendMagicLink(email: string, magicToken: string) {
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
@@ -9,12 +10,11 @@ async function sendMagicLink(email: string, magicToken: string) {
   const publicOrigin = process.env.PUBLIC_ONBOARDING_ORIGIN || "https://onboarding.focusbusinesslab.es";
   const magicUrl = new URL("/magic-login", publicOrigin);
   magicUrl.searchParams.set("token", magicToken);
-  const response = await fetch(url, {
+  const { response, payload } = await fetchAppsScriptJson<{ ok?: boolean; error?: string }>(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ action: "sendMagicLogin", email, magicUrl: magicUrl.toString(), _focusToken: token }),
   });
-  const payload = await response.json() as { ok?: boolean; error?: string };
   if (!response.ok || payload.ok !== true) throw new Error(payload.error || "No se pudo enviar el correo.");
 }
 
