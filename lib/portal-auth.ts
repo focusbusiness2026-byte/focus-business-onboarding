@@ -18,10 +18,18 @@ type MagicTokenRow = {
   return_to: string;
 };
 
+export type PortalAccess = {
+  role: string;
+  prospection: boolean;
+  radar: boolean;
+};
+
 export type PortalIdentity = {
   email: string;
   role: string;
   onboardingId: string | null;
+  prospectionAccess: boolean;
+  radarAccess: boolean;
 };
 
 const ALLOWED_DESTINATIONS = new Set([
@@ -66,6 +74,12 @@ async function ensureAuthTables() {
       created_at TEXT NOT NULL
     )`),
     db.prepare("CREATE INDEX IF NOT EXISTS idx_portal_magic_email ON portal_magic_tokens(email)"),
+    db.prepare(`CREATE TABLE IF NOT EXISTS portal_access_permissions (
+      email TEXT PRIMARY KEY NOT NULL,
+      prospection_allowed INTEGER NOT NULL DEFAULT 1,
+      radar_allowed INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL
+    )`),
   ]);
 }
 
@@ -149,7 +163,7 @@ export async function createMagicLogin(input: {
   return { email, magicToken: rawToken, expiresAt };
 }
 
-export async function consumeMagicLogin(rawToken: string, activeRole?: string) {
+export async function consumeMagicLogin(rawToken: string, activeAccess?: PortalAccess | string) {
   if (!rawToken || rawToken.length > 256) throw new Error("El enlace no es válido o ya fue utilizado.");
   await ensureAuthTables();
   const db = database();
@@ -174,14 +188,28 @@ export async function consumeMagicLogin(rawToken: string, activeRole?: string) {
     FROM portal_users WHERE email = ?`)
     .bind(token.email).first<PortalUserRow>();
   if (!user || !user.active) throw new Error("Este acceso ya no está activo.");
-  const currentRole = activeRole || user.role;
-  await db.prepare(`UPDATE portal_users SET role = ?, email_verified_at = COALESCE(email_verified_at, ?), updated_at = ?
-    WHERE email = ?`)
-    .bind(currentRole, now, now, user.email).run();
+  const currentRole = typeof activeAccess === "string" ? activeAccess : activeAccess?.role || user.role;
+  const isAdmin = currentRole.toLowerCase().includes("admin");
+  const prospectionAccess = typeof activeAccess === "object" ? activeAccess.prospection : true;
+  const radarAccess = typeof activeAccess === "object" ? activeAccess.radar : isAdmin;
+  await db.batch([
+    db.prepare(`UPDATE portal_users SET role = ?, email_verified_at = COALESCE(email_verified_at, ?), updated_at = ?
+      WHERE email = ?`).bind(currentRole, now, now, user.email),
+    db.prepare(`INSERT INTO portal_access_permissions
+      (email, prospection_allowed, radar_allowed, updated_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET
+        prospection_allowed = excluded.prospection_allowed,
+        radar_allowed = excluded.radar_allowed,
+        updated_at = excluded.updated_at`)
+      .bind(user.email, prospectionAccess ? 1 : 0, radarAccess ? 1 : 0, now),
+  ]);
   const session = await createPortalSession({
     email: user.email,
     role: currentRole,
     onboardingId: user.onboarding_id,
+    prospectionAccess,
+    radarAccess,
   });
   return { ...session, destination: safePortalDestination(token.return_to) };
 }
@@ -225,14 +253,29 @@ export async function introspectPortalSession(rawToken: string) {
   const db = database();
   const tokenHash = await sha256(rawToken);
   const now = new Date().toISOString();
-  const result = await db.prepare(`SELECT u.email, u.role, u.onboarding_id
+  const result = await db.prepare(`SELECT u.email, u.role, u.onboarding_id,
+      COALESCE(p.prospection_allowed, 1) AS prospection_allowed,
+      COALESCE(p.radar_allowed, CASE WHEN LOWER(u.role) LIKE '%admin%' THEN 1 ELSE 0 END) AS radar_allowed
     FROM portal_sessions s
     JOIN portal_users u ON u.email = s.email
+    LEFT JOIN portal_access_permissions p ON p.email = u.email
     WHERE s.token_hash = ? AND s.expires_at > ? AND u.active = 1 AND u.email_verified_at IS NOT NULL`)
-    .bind(tokenHash, now).first<{ email: string; role: string; onboarding_id: string | null }>();
+    .bind(tokenHash, now).first<{
+      email: string;
+      role: string;
+      onboarding_id: string | null;
+      prospection_allowed: number;
+      radar_allowed: number;
+    }>();
   if (!result) return null;
   await db.prepare("UPDATE portal_sessions SET last_seen_at = ? WHERE token_hash = ?").bind(now, tokenHash).run();
-  return { email: result.email, role: result.role, onboardingId: result.onboarding_id } satisfies PortalIdentity;
+  return {
+    email: result.email,
+    role: result.role,
+    onboardingId: result.onboarding_id,
+    prospectionAccess: Boolean(result.prospection_allowed),
+    radarAccess: Boolean(result.radar_allowed),
+  } satisfies PortalIdentity;
 }
 
 export async function revokePortalSession(rawToken: string) {

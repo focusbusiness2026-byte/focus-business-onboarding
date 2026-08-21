@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createMagicLogin, invalidateMagicLogin, safePortalDestination } from "@/lib/portal-auth";
-import { activeSheetRole } from "@/lib/sheet-access";
+import { activeSheetAccess } from "@/lib/sheet-access";
 import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
 async function sendMagicLink(email: string, magicToken: string) {
@@ -27,10 +27,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "Escribe un correo válido." }, { status: 400 });
     }
     stage = "validate-sheet-access";
-    const role = await activeSheetRole(email);
-    if (role) {
+    const destination = safePortalDestination(body.returnTo);
+    const access = await activeSheetAccess(email);
+    const destinationAllowed = access && (
+      destination.startsWith("https://radar.focusbusinesslab.es") ? access.radar : access.prospection
+    );
+    if (access && destinationAllowed) {
       stage = "create-one-time-link";
-      const magic = await createMagicLogin({ email, role, returnTo: safePortalDestination(body.returnTo) });
+      const magic = await createMagicLogin({ email, role: access.role, returnTo: destination });
       if (magic.magicToken) {
         try {
           stage = "send-access-email";
