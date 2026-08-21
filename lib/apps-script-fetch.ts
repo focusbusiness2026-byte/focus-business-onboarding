@@ -13,8 +13,11 @@ export async function fetchAppsScriptJson<T>(url: string | URL, init?: RequestIn
       method: "GET",
       headers: { Accept: "application/json" },
       cache: "no-store",
-      redirect: "error",
+      redirect: "manual",
     });
+    if (REDIRECT_STATUSES.has(response.status)) {
+      throw new Error("Google Apps Script devolvió más de una redirección.");
+    }
   }
 
   const contentType = response.headers.get("content-type") || "";
