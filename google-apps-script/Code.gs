@@ -9,6 +9,11 @@ const ONBOARDING_TAB = "Onboarding";
 const ACCESS_TAB = "Accesos";
 const CLIENT_MONTHLY_SCRAPES = 50;
 const QUOTA_RENEWAL_HEADER = "Última renovación";
+const PROSPECTION_ACCESS_HEADER = "Acceso Prospección";
+const RADAR_ACCESS_HEADER = "Acceso Radar";
+const ACCESS_ALLOWED = "Permitido";
+const ACCESS_BLOCKED = "Bloqueado";
+const ACCESS_EMAIL_SENDER = "focusbusiness2026@gmail.com";
 const ONBOARDING_HEADERS = [
   "ID registro", "Fecha envío", "Estado", "Empresa", "Razón social", "Web", "Actividad", "Ciudad / país", "Tamaño equipo", "Descripción", "Color marca", "Logo URL", "Tono marca",
   "Servicio prioritario", "Ticket medio", "Modelo de precio", "Servicios", "Público", "Sectores", "Mercados", "Tamaño empresa ideal", "Decisor habitual", "Presupuesto mínimo",
@@ -69,6 +74,7 @@ function sendMagicLogin(email, magicUrl) {
     ].join("\n"),
     htmlBody: accessEmailHtml(magicUrl),
     name: "Focus Business",
+    replyTo: ACCESS_EMAIL_SENDER,
   });
   return json({ ok: true });
 }
@@ -141,6 +147,8 @@ function ensureClientAccess(email) {
   const percentageIndex = headers.indexOf("% disponible");
   const quotaStatusIndex = headers.indexOf("Estado cuota");
   const renewalIndex = headers.indexOf(QUOTA_RENEWAL_HEADER);
+  const prospectionAccessIndex = headers.indexOf(PROSPECTION_ACCESS_HEADER);
+  const radarAccessIndex = headers.indexOf(RADAR_ACCESS_HEADER);
   if (emailIndex < 0 || roleIndex < 0 || statusIndex < 0) {
     throw new Error("La pestaña Accesos debe contener Correo autorizado, Rol y Estado");
   }
@@ -158,6 +166,12 @@ function ensureClientAccess(email) {
         sheet.getRange(rowNumber, renewalIndex + 1).setValue(new Date());
       }
     }
+    if (prospectionAccessIndex >= 0 && !values[existingIndex][prospectionAccessIndex]) {
+      sheet.getRange(rowNumber, prospectionAccessIndex + 1).setValue(ACCESS_ALLOWED);
+    }
+    if (radarAccessIndex >= 0 && !values[existingIndex][radarAccessIndex]) {
+      sheet.getRange(rowNumber, radarAccessIndex + 1).setValue(isAdminRole(resolvedRole) ? ACCESS_ALLOWED : ACCESS_BLOCKED);
+    }
     return;
   }
   const row = headers.map((header) => {
@@ -168,6 +182,8 @@ function ensureClientAccess(email) {
     if (header === "Raspados asignados") return CLIENT_MONTHLY_SCRAPES;
     if (header === "Raspados usados") return 0;
     if (header === QUOTA_RENEWAL_HEADER) return new Date();
+    if (header === PROSPECTION_ACCESS_HEADER) return ACCESS_ALLOWED;
+    if (header === RADAR_ACCESS_HEADER) return ACCESS_BLOCKED;
     return "";
   });
   sheet.appendRow(row);
@@ -324,7 +340,12 @@ function doGet(e) {
       .filter((row) => row[0] && row[0] !== "Pendiente de primer envío")
       .filter((row) => isAdminRole(user.role) || recordBelongsToUser(row, headers, user.email))
       .map((row) => Object.fromEntries(ONBOARDING_HEADERS.map((header, index) => [header, row[index] instanceof Date ? row[index].toISOString() : String(row[index] || "")] )));
-    return json({ ok: true, role: user.role, records });
+    return json({
+      ok: true,
+      role: user.role,
+      access: { prospection: user.prospectionAllowed, radar: user.radarAllowed },
+      records,
+    });
   } catch (error) {
     return json({ ok: false, error: String(error && error.message ? error.message : error) });
   }
@@ -372,12 +393,27 @@ function findActiveUser(email) {
   const emailIndex = headers.indexOf("Correo autorizado");
   const roleIndex = headers.indexOf("Rol");
   const statusIndex = headers.indexOf("Estado");
+  const prospectionAccessIndex = headers.indexOf(PROSPECTION_ACCESS_HEADER);
+  const radarAccessIndex = headers.indexOf(RADAR_ACCESS_HEADER);
   const normalized = String(email).trim().toLowerCase();
   const match = rows.find((row) => String(row[emailIndex]).trim().toLowerCase() === normalized && String(row[statusIndex]).trim().toLowerCase() === "activo");
-  return match ? { email: normalized, role: match[roleIndex] } : null;
+  if (!match) return null;
+  const role = String(match[roleIndex] || "Cliente");
+  return {
+    email: normalized,
+    role,
+    prospectionAllowed: accessValue(match[prospectionAccessIndex], true),
+    radarAllowed: accessValue(match[radarAccessIndex], isAdminRole(role)),
+  };
 }
 
 function isAdminRole(role) { return String(role || "").trim().toLowerCase().includes("admin"); }
+function accessValue(value, fallback) {
+  const normalized = String(value || "").trim().toLowerCase();
+  if (normalized === ACCESS_ALLOWED.toLowerCase()) return true;
+  if (normalized === ACCESS_BLOCKED.toLowerCase()) return false;
+  return Boolean(fallback);
+}
 function recordBelongsToUser(row, headers, email) {
   const normalized = String(email || "").trim().toLowerCase();
   const responsible = String(row[headers.indexOf("Email responsable")] || "").trim().toLowerCase();

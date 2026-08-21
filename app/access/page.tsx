@@ -48,10 +48,14 @@ export default function SharedAccessPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const requestedDestination = allowedReturnTo(searchParams.get("return_to"));
+  const directRadarAccess = requestedDestination === "https://radar.focusbusinesslab.es/";
+  const visibleDestinations = directRadarAccess
+    ? PORTAL_DESTINATIONS.filter((item) => item.value === "https://radar.focusbusinesslab.es/")
+    : PORTAL_DESTINATIONS.filter((item) => item.value === "https://prospeccion.focusbusinesslab.es/portal");
   const destination = selectedDestination || (
-    PORTAL_DESTINATIONS.some((item) => item.value === requestedDestination)
+    visibleDestinations.some((item) => item.value === requestedDestination)
       ? requestedDestination
-      : PORTAL_DESTINATIONS[0].value
+      : visibleDestinations[0].value
   );
   const activeDestination = PORTAL_DESTINATIONS.find((item) => item.value === destination) || PORTAL_DESTINATIONS[0];
 
@@ -80,11 +84,11 @@ export default function SharedAccessPage() {
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
     <div className="access-context"><p className="eyebrow">{activeDestination.eyebrow}</p><span className="access-destination-badge">{activeDestination.badge}</span></div>
     <h1>{activeDestination.heading}</h1>
-    <p className="intro">Elige Prospección o Focus Viral Radar y escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez.</p>
+    <p className="intro">Escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez. El destino se habilita según los permisos configurados por administración.</p>
     <form className="access-form" onSubmit={requestLink}>
       <fieldset className="portal-destinations">
         <legend>¿A dónde quieres entrar?</legend>
-        {PORTAL_DESTINATIONS.map((item, index) => <div className="portal-destination" key={item.value}>
+        {visibleDestinations.map((item, index) => <div className="portal-destination" key={item.value}>
           <input id={`portal-destination-${index}`} type="radio" name="destination" value={item.value} checked={destination === item.value} onChange={() => setSelectedDestination(item.value)} />
           <label htmlFor={`portal-destination-${index}`}><b>{item.title}</b><small>{item.description}</small></label>
         </div>)}

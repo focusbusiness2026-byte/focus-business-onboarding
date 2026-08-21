@@ -174,6 +174,8 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(access, /api\/auth\/request-link/);
   assert.match(access, /Prospección/);
   assert.match(access, /Focus Viral Radar/);
+  assert.match(access, /directRadarAccess/);
+  assert.match(access, /visibleDestinations/);
   assert.match(access, /<main className="access">/);
   assert.match(access, /PORTAL DE PROSPECCIÓN/);
   assert.match(access, /name="destination"/);
@@ -193,7 +195,10 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
   assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
   assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
-  assert.match(consume, /activeSheetRole\(email\)/);
+  assert.match(consume, /activeSheetAccess\(email\)/);
+  assert.match(auth, /portal_access_permissions/);
+  assert.match(auth, /prospectionAccess/);
+  assert.match(auth, /radarAccess/);
   assert.match(appsScriptFetch, /redirect: "manual"/);
   assert.match(appsScriptFetch, /https:\/\/script\.googleusercontent\.com\//);
   assert.match(appsScriptFetch, /application\/json/);
@@ -224,6 +229,11 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(appsScript, /background:#d9af43/);
   assert.match(appsScript, /CLIENT_MONTHLY_SCRAPES = 50/);
   assert.match(appsScript, /QUOTA_RENEWAL_HEADER = "Última renovación"/);
+  assert.match(appsScript, /PROSPECTION_ACCESS_HEADER = "Acceso Prospección"/);
+  assert.match(appsScript, /RADAR_ACCESS_HEADER = "Acceso Radar"/);
+  assert.match(appsScript, /ACCESS_EMAIL_SENDER = "focusbusiness2026@gmail.com"/);
+  assert.match(appsScript, /replyTo: ACCESS_EMAIL_SENDER/);
+  assert.match(appsScript, /access: \{ prospection: user\.prospectionAllowed, radar: user\.radarAllowed \}/);
   assert.match(appsScript, /"Sin límite";MAX\(/);
   assert.match(appsScript, /"Ilimitado";IF\(/);
   assert.match(onboardingRoute, /validateSubmission\(payload\)/);
