@@ -218,6 +218,7 @@ test("uses Google Sheets as the only submission and portal data source", async (
   assert.match(appsScript, /migrateOnboardingHeaders/);
   assert.match(appsScript, /syncExistingClientAccessFromOnboarding/);
   assert.match(appsScript, /background:#d9af43/);
+  assert.match(appsScript, /setFormula\(`=MAX\([^`]+;0\)`\)/);
   assert.match(onboardingRoute, /validateSubmission\(payload\)/);
   assert.match(onboardingRoute, /El formulario no admite contraseñas, tokens, claves API ni claves privadas/);
   assert.match(onboardingRoute, /const payload = \(body\.onboarding/);

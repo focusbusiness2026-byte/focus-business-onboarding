@@ -160,13 +160,13 @@ function ensureClientAccess(email) {
   sheet.appendRow(row);
   const newRow = sheet.getLastRow();
   if (assignedIndex >= 0 && usedIndex >= 0 && availableIndex >= 0) {
-    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow},0)`);
+    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow};0)`);
   }
   if (assignedIndex >= 0 && availableIndex >= 0 && percentageIndex >= 0) {
-    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow},0)`);
+    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow};0)`);
   }
   if (availableIndex >= 0 && percentageIndex >= 0 && quotaStatusIndex >= 0) {
-    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0,"Agotado",IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%,"Crítico",IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%,"Atención","Disponible")))`);
+    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible")))`);
   }
 }
 
