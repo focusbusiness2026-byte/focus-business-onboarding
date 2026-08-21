@@ -7,6 +7,8 @@
 const ONBOARDING_SHEET_ID = "1FTWbZ1gDpA4RezEz89w9PmbRjwx_2bX2mhzF67V8wiE";
 const ONBOARDING_TAB = "Onboarding";
 const ACCESS_TAB = "Accesos";
+const CLIENT_MONTHLY_SCRAPES = 50;
+const QUOTA_RENEWAL_HEADER = "Última renovación";
 const ONBOARDING_HEADERS = [
   "ID registro", "Fecha envío", "Estado", "Empresa", "Razón social", "Web", "Actividad", "Ciudad / país", "Tamaño equipo", "Descripción", "Color marca", "Logo URL", "Tono marca",
   "Servicio prioritario", "Ticket medio", "Modelo de precio", "Servicios", "Público", "Sectores", "Mercados", "Tamaño empresa ideal", "Decisor habitual", "Presupuesto mínimo",
@@ -138,15 +140,24 @@ function ensureClientAccess(email) {
   const availableIndex = headers.indexOf("Raspados disponibles");
   const percentageIndex = headers.indexOf("% disponible");
   const quotaStatusIndex = headers.indexOf("Estado cuota");
+  const renewalIndex = headers.indexOf(QUOTA_RENEWAL_HEADER);
   if (emailIndex < 0 || roleIndex < 0 || statusIndex < 0) {
     throw new Error("La pestaña Accesos debe contener Correo autorizado, Rol y Estado");
   }
   const existingIndex = values.findIndex((row, index) => index > 0 && String(row[emailIndex]).trim().toLowerCase() === normalized);
   if (existingIndex > 0) {
     const role = String(values[existingIndex][roleIndex] || "").trim();
-    if (!role) sheet.getRange(existingIndex + 1, roleIndex + 1).setValue("Cliente");
-    sheet.getRange(existingIndex + 1, statusIndex + 1).setValue("Activo");
-    if (updatedIndex >= 0) sheet.getRange(existingIndex + 1, updatedIndex + 1).setValue(new Date());
+    const resolvedRole = role || "Cliente";
+    const rowNumber = existingIndex + 1;
+    if (!role) sheet.getRange(rowNumber, roleIndex + 1).setValue(resolvedRole);
+    sheet.getRange(rowNumber, statusIndex + 1).setValue("Activo");
+    if (updatedIndex >= 0) sheet.getRange(rowNumber, updatedIndex + 1).setValue(new Date());
+    if (!isAdminRole(resolvedRole) && assignedIndex >= 0) {
+      sheet.getRange(rowNumber, assignedIndex + 1).setValue(CLIENT_MONTHLY_SCRAPES);
+      if (renewalIndex >= 0 && !values[existingIndex][renewalIndex]) {
+        sheet.getRange(rowNumber, renewalIndex + 1).setValue(new Date());
+      }
+    }
     return;
   }
   const row = headers.map((header) => {
@@ -154,19 +165,21 @@ function ensureClientAccess(email) {
     if (header === "Rol") return "Cliente";
     if (header === "Estado") return "Activo";
     if (header === "Última actualización") return new Date();
+    if (header === "Raspados asignados") return CLIENT_MONTHLY_SCRAPES;
     if (header === "Raspados usados") return 0;
+    if (header === QUOTA_RENEWAL_HEADER) return new Date();
     return "";
   });
   sheet.appendRow(row);
   const newRow = sheet.getLastRow();
   if (assignedIndex >= 0 && usedIndex >= 0 && availableIndex >= 0) {
-    sheet.getRange(newRow, availableIndex + 1).setFormula(`=MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow};0)`);
+    sheet.getRange(newRow, availableIndex + 1).setFormula(`=IF(${columnLetter(roleIndex + 1)}${newRow}="Administrador";"Sin límite";MAX(${columnLetter(assignedIndex + 1)}${newRow}-${columnLetter(usedIndex + 1)}${newRow};0))`);
   }
   if (assignedIndex >= 0 && availableIndex >= 0 && percentageIndex >= 0) {
-    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow};0)`);
+    sheet.getRange(newRow, percentageIndex + 1).setFormula(`=IF(${columnLetter(roleIndex + 1)}${newRow}="Administrador";"";IFERROR(${columnLetter(availableIndex + 1)}${newRow}/${columnLetter(assignedIndex + 1)}${newRow};0))`);
   }
   if (availableIndex >= 0 && percentageIndex >= 0 && quotaStatusIndex >= 0) {
-    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible")))`);
+    sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(roleIndex + 1)}${newRow}="Administrador";"Ilimitado";IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible"))))`);
   }
 }
 
