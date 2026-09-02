@@ -43,46 +43,6 @@ function database() {
   return env.DB;
 }
 
-async function ensureAuthTables() {
-  const db = database();
-  await db.batch([
-    db.prepare(`CREATE TABLE IF NOT EXISTS portal_users (
-      email TEXT PRIMARY KEY NOT NULL,
-      role TEXT NOT NULL DEFAULT 'Cliente',
-      active INTEGER NOT NULL DEFAULT 1,
-      email_verified_at TEXT,
-      onboarding_id TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    )`),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_portal_users_onboarding_id ON portal_users(onboarding_id)"),
-    db.prepare(`CREATE TABLE IF NOT EXISTS portal_sessions (
-      token_hash TEXT PRIMARY KEY NOT NULL,
-      email TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      last_seen_at TEXT NOT NULL
-    )`),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_portal_sessions_email ON portal_sessions(email)"),
-    db.prepare(`CREATE TABLE IF NOT EXISTS portal_magic_tokens (
-      token_hash TEXT PRIMARY KEY NOT NULL,
-      email TEXT NOT NULL,
-      purpose TEXT NOT NULL,
-      return_to TEXT NOT NULL,
-      expires_at TEXT NOT NULL,
-      consumed_at TEXT,
-      created_at TEXT NOT NULL
-    )`),
-    db.prepare("CREATE INDEX IF NOT EXISTS idx_portal_magic_email ON portal_magic_tokens(email)"),
-    db.prepare(`CREATE TABLE IF NOT EXISTS portal_access_permissions (
-      email TEXT PRIMARY KEY NOT NULL,
-      prospection_allowed INTEGER NOT NULL DEFAULT 1,
-      radar_allowed INTEGER NOT NULL DEFAULT 0,
-      updated_at TEXT NOT NULL
-    )`),
-  ]);
-}
-
 function normalizeEmail(email: unknown) {
   return String(email || "").trim().toLowerCase();
 }
@@ -122,7 +82,6 @@ export async function createMagicLogin(input: {
   onboardingId?: string;
   returnTo?: string;
 }) {
-  await ensureAuthTables();
   const email = normalizeEmail(input.email);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("El correo de acceso no es válido.");
 
@@ -165,7 +124,6 @@ export async function createMagicLogin(input: {
 
 export async function consumeMagicLogin(rawToken: string, activeAccess?: PortalAccess | string) {
   if (!rawToken || rawToken.length > 256) throw new Error("El enlace no es válido o ya fue utilizado.");
-  await ensureAuthTables();
   const db = database();
   const tokenHash = await sha256(rawToken);
   const now = new Date().toISOString();
@@ -216,7 +174,6 @@ export async function consumeMagicLogin(rawToken: string, activeAccess?: PortalA
 
 export async function inspectMagicLogin(rawToken: string) {
   if (!rawToken || rawToken.length > 256) return null;
-  await ensureAuthTables();
   const tokenHash = await sha256(rawToken);
   const now = new Date().toISOString();
   const token = await database().prepare(`SELECT email FROM portal_magic_tokens
@@ -227,7 +184,6 @@ export async function inspectMagicLogin(rawToken: string) {
 
 export async function invalidateMagicLogin(rawToken: string) {
   if (!rawToken) return;
-  await ensureAuthTables();
   await database().prepare(`UPDATE portal_magic_tokens SET consumed_at = ?
     WHERE token_hash = ? AND purpose = 'magic-login' AND consumed_at IS NULL`)
     .bind(new Date().toISOString(), await sha256(rawToken)).run();
@@ -249,7 +205,6 @@ async function createPortalSession(identity: PortalIdentity) {
 
 export async function introspectPortalSession(rawToken: string) {
   if (!rawToken) return null;
-  await ensureAuthTables();
   const db = database();
   const tokenHash = await sha256(rawToken);
   const now = new Date().toISOString();
@@ -280,7 +235,6 @@ export async function introspectPortalSession(rawToken: string) {
 
 export async function revokePortalSession(rawToken: string) {
   if (!rawToken) return;
-  await ensureAuthTables();
   await database().prepare("DELETE FROM portal_sessions WHERE token_hash = ?").bind(await sha256(rawToken)).run();
 }
 

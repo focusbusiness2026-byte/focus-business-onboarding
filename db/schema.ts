@@ -55,3 +55,10 @@ export const portalMagicTokens = sqliteTable(
   },
   (table) => [index("idx_portal_magic_email").on(table.email)],
 );
+
+export const portalAccessPermissions = sqliteTable("portal_access_permissions", {
+  email: text("email").primaryKey(),
+  prospectionAllowed: integer("prospection_allowed", { mode: "boolean" }).notNull().default(true),
+  radarAllowed: integer("radar_allowed", { mode: "boolean" }).notNull().default(false),
+  updatedAt: text("updated_at").notNull(),
+});
