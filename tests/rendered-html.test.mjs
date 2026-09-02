@@ -171,6 +171,7 @@ test("requires a one-time magic-link session before opening the portal", async (
   const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
   const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
   const appsScriptFetch = await readFile(new URL("../lib/apps-script-fetch.ts", import.meta.url), "utf8");
+  const accessMigration = await readFile(new URL("../drizzle/0002_nappy_nextwave.sql", import.meta.url), "utf8");
   assert.match(access, /api\/auth\/request-link/);
   assert.match(access, /Prospección/);
   assert.match(access, /Focus Viral Radar/);
@@ -192,6 +193,8 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(globalStyles, /\.access \{ --access-accent:var\(--gold\)/);
   assert.doesNotMatch(globalStyles, /\.access-(?:admin|radar)\s*\{\s*--access-accent/);
   assert.doesNotMatch(`${access}\n${adminAccess}`, /access-(?:admin|radar|prospection)/);
+  assert.doesNotMatch(auth, /CREATE TABLE IF NOT EXISTS|CREATE INDEX IF NOT EXISTS/);
+  assert.match(accessMigration, /CREATE TABLE IF NOT EXISTS `portal_access_permissions`/);
   assert.match(auth, /consumed_at IS NULL AND expires_at > \?/);
   assert.match(auth, /Number\(consumed\.meta\?\.changes \|\| 0\) !== 1/);
   assert.match(auth, /DELETE FROM portal_sessions WHERE email = \?/);
