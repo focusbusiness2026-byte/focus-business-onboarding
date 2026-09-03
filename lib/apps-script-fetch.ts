@@ -33,7 +33,9 @@ export async function fetchAppsScriptJson<T>(url: string | URL, init?: RequestIn
 
   const contentType = response.headers.get("content-type") || "";
   const text = await response.text();
-  if (!contentType.toLowerCase().includes("application/json")) {
+  const trimmed = text.trim();
+  const looksLikeJson = trimmed.startsWith("{") || trimmed.startsWith("[");
+  if (!contentType.toLowerCase().includes("application/json") && !looksLikeJson) {
     throw new Error("Google Apps Script no devolvió una respuesta JSON válida.");
   }
   try {
