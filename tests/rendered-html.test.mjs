@@ -203,7 +203,9 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(auth, /prospectionAccess/);
   assert.match(auth, /radarAccess/);
   assert.match(appsScriptFetch, /redirect: "manual"/);
-  assert.match(appsScriptFetch, /https:\/\/script\.googleusercontent\.com\//);
+  assert.match(appsScriptFetch, /script\.googleusercontent\.com/);
+  assert.match(appsScriptFetch, /MAX_APPS_SCRIPT_REDIRECTS/);
+  assert.match(appsScriptFetch, /while \(REDIRECT_STATUSES\.has\(response\.status\)\)/);
   assert.match(appsScriptFetch, /application\/json/);
   assert.match(consume, /invalidateMagicLogin\(rawToken\)/);
   assert.match(route, /introspectPortalSession\(portalSessionFromRequest\(request\)\)/);

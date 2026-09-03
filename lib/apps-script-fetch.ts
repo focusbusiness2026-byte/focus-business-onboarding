@@ -1,23 +1,34 @@
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const APPS_SCRIPT_RESPONSE_HOST = "script.googleusercontent.com";
+const MAX_APPS_SCRIPT_REDIRECTS = 5;
 
 export async function fetchAppsScriptJson<T>(url: string | URL, init?: RequestInit) {
-  const first = await fetch(url, { ...init, redirect: "manual" });
-  let response = first;
+  let response = await fetch(url, { ...init, redirect: "manual" });
+  let redirects = 0;
 
-  if (REDIRECT_STATUSES.has(first.status)) {
-    const location = first.headers.get("location");
-    if (!location || !location.startsWith("https://script.googleusercontent.com/")) {
+  while (REDIRECT_STATUSES.has(response.status)) {
+    redirects += 1;
+    if (redirects > MAX_APPS_SCRIPT_REDIRECTS) {
+      throw new Error("Google Apps Script devolvió demasiadas redirecciones.");
+    }
+
+    const location = response.headers.get("location");
+    let nextUrl: URL;
+    try {
+      nextUrl = new URL(location || "");
+    } catch {
       throw new Error("Google Apps Script devolvió una redirección no permitida.");
     }
-    response = await fetch(location, {
+    if (nextUrl.protocol !== "https:" || nextUrl.hostname !== APPS_SCRIPT_RESPONSE_HOST) {
+      throw new Error("Google Apps Script devolvió una redirección no permitida.");
+    }
+
+    response = await fetch(nextUrl, {
       method: "GET",
       headers: { Accept: "application/json" },
       cache: "no-store",
       redirect: "manual",
     });
-    if (REDIRECT_STATUSES.has(response.status)) {
-      throw new Error("Google Apps Script devolvió más de una redirección.");
-    }
   }
 
   const contentType = response.headers.get("content-type") || "";
