@@ -170,6 +170,7 @@ test("requires a one-time magic-link session before opening the portal", async (
   const adminAccess = await readFile(new URL("../app/admin-access/page.tsx", import.meta.url), "utf8");
   const auth = await readFile(new URL("../lib/portal-auth.ts", import.meta.url), "utf8");
   const consume = await readFile(new URL("../app/api/auth/consume-link/route.ts", import.meta.url), "utf8");
+  const requestLink = await readFile(new URL("../app/api/auth/request-link/route.ts", import.meta.url), "utf8");
   const appsScriptFetch = await readFile(new URL("../lib/apps-script-fetch.ts", import.meta.url), "utf8");
   const sheetAccess = await readFile(new URL("../lib/sheet-access.ts", import.meta.url), "utf8");
   const accessMigration = await readFile(new URL("../drizzle/0002_nappy_nextwave.sql", import.meta.url), "utf8");
@@ -214,6 +215,11 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(sheetAccess, /AbortSignal\.timeout\(ACCESS_LOOKUP_TIMEOUT_MS\)/);
   assert.match(sheetAccess, /portal_access_lookup_retry/);
   assert.match(sheetAccess, /GOOGLE_SHEETS_WEBHOOK_URL/);
+  assert.match(requestLink, /MagicLinkDeliveryUnconfirmedError/);
+  assert.match(requestLink, /AbortSignal\.timeout\(25_000\)/);
+  assert.match(requestLink, /portal_access_delivery_unconfirmed/);
+  assert.match(requestLink, /instanceof MagicLinkDeliveryUnconfirmedError/);
+  assert.match(requestLink, /await invalidateMagicLogin\(magic\.magicToken\)/);
   assert.match(consume, /invalidateMagicLogin\(rawToken\)/);
   assert.match(route, /introspectPortalSession\(portalSessionFromRequest\(request\)\)/);
   assert.doesNotMatch(route, /accessFor\(body\.email\)/);
