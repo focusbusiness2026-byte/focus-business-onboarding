@@ -15,7 +15,7 @@ export async function fetchAppsScriptJson<T>(url: string | URL, init?: RequestIn
     const location = response.headers.get("location");
     let nextUrl: URL;
     try {
-      nextUrl = new URL(location || "");
+      nextUrl = new URL(location || "", response.url);
     } catch {
       throw new Error("Google Apps Script devolvió una redirección no permitida.");
     }
