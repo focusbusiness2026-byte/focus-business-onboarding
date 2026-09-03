@@ -3,6 +3,13 @@ import { createMagicLogin, invalidateMagicLogin, safePortalDestination } from "@
 import { activeSheetAccess } from "@/lib/sheet-access";
 import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
+class MagicLinkDeliveryUnconfirmedError extends Error {
+  constructor() {
+    super("Google procesó el envío, pero no confirmó la respuesta.");
+    this.name = "MagicLinkDeliveryUnconfirmedError";
+  }
+}
+
 async function sendMagicLink(email: string, magicToken: string) {
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   const token = process.env.FOCUS_PORTAL_TOKEN;
@@ -10,11 +17,21 @@ async function sendMagicLink(email: string, magicToken: string) {
   const publicOrigin = process.env.PUBLIC_ONBOARDING_ORIGIN || "https://onboarding.focusbusinesslab.es";
   const magicUrl = new URL("/magic-login", publicOrigin);
   magicUrl.searchParams.set("token", magicToken);
-  const { response, payload } = await fetchAppsScriptJson<{ ok?: boolean; error?: string }>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action: "sendMagicLogin", email, magicUrl: magicUrl.toString(), _focusToken: token }),
-  });
+  let delivery;
+  try {
+    delivery = await fetchAppsScriptJson<{ ok?: boolean; error?: string }>(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "sendMagicLogin", email, magicUrl: magicUrl.toString(), _focusToken: token }),
+      signal: AbortSignal.timeout(25_000),
+    });
+  } catch {
+    // Apps Script may execute MailApp successfully and then return a malformed or
+    // rejected redirect. Retrying could send the same email twice, so preserve the
+    // one-time link and report a neutral success to the requester.
+    throw new MagicLinkDeliveryUnconfirmedError();
+  }
+  const { response, payload } = delivery;
   if (!response.ok || payload.ok !== true) throw new Error(payload.error || "No se pudo enviar el correo.");
 }
 
@@ -40,8 +57,12 @@ export async function POST(request: Request) {
           stage = "send-access-email";
           await sendMagicLink(email, magic.magicToken);
         } catch (error) {
-          await invalidateMagicLogin(magic.magicToken);
-          throw error;
+          if (error instanceof MagicLinkDeliveryUnconfirmedError) {
+            console.warn("portal_access_delivery_unconfirmed", { stage });
+          } else {
+            await invalidateMagicLogin(magic.magicToken);
+            throw error;
+          }
         }
       }
     }
