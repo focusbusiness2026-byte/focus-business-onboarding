@@ -48,10 +48,7 @@ export default function SharedAccessPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const requestedDestination = allowedReturnTo(searchParams.get("return_to"));
-  const directRadarAccess = requestedDestination === "https://radar.focusbusinesslab.es/";
-  const visibleDestinations = directRadarAccess
-    ? PORTAL_DESTINATIONS.filter((item) => item.value === "https://radar.focusbusinesslab.es/")
-    : PORTAL_DESTINATIONS.filter((item) => item.value === "https://prospeccion.focusbusinesslab.es/portal");
+  const visibleDestinations = PORTAL_DESTINATIONS;
   const destination = selectedDestination || (
     visibleDestinations.some((item) => item.value === requestedDestination)
       ? requestedDestination
@@ -70,7 +67,7 @@ export default function SharedAccessPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, returnTo: destination }),
       });
-      const result = await response.json() as { ok?: boolean; message?: string; error?: string };
+      const result = await response.json() as { ok?: boolean; message?: string; error?: string; availability?: string };
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo enviar el enlace.");
       setMessage(result.message || "Revisa tu correo.");
     } catch (requestError) {
@@ -80,14 +77,21 @@ export default function SharedAccessPage() {
     }
   }
 
-  return <main className="access"><section className="access-card">
+  return <main className="access access-hub"><section className="access-card access-hub-card">
     <a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a>
-    <div className="access-context"><p className="eyebrow">{activeDestination.eyebrow}</p><span className="access-destination-badge">{activeDestination.badge}</span></div>
-    <h1>{activeDestination.heading}</h1>
-    <p className="intro">Escribe el correo activo en Focus Business. Te enviaremos un enlace que caduca en 15 minutos y solo se puede usar una vez. El destino se habilita según los permisos configurados por administración.</p>
+    <div className="access-context"><p className="eyebrow">CENTRO DE ACCESO</p><span className="access-destination-badge">CLIENTES</span></div>
+    <h1>Todo Focus Business en un solo lugar</h1>
+    <p className="intro">Completa primero tu configuración o solicita un enlace protegido para entrar a las herramientas habilitadas para tu cuenta.</p>
+    <section className="access-resource-grid" aria-label="Recursos de Focus Business">
+      <a className="access-resource-card" href="/"><span>01 · CONFIGURACIÓN</span><b>Formulario inicial</b><small>Completa los datos de tu productora, oferta, público, marca e integraciones.</small><strong>Abrir formulario →</strong></a>
+      <button className={`access-resource-card${destination === PORTAL_DESTINATIONS[0].value ? " selected" : ""}`} type="button" onClick={() => setSelectedDestination(PORTAL_DESTINATIONS[0].value)}><span>02 · PROSPECCIÓN</span><b>Portal de Prospección</b><small>Investiga, revisa y gestiona los leads asociados a tu cuenta.</small><strong>Seleccionar acceso →</strong></button>
+      <button className={`access-resource-card${destination === PORTAL_DESTINATIONS[1].value ? " selected" : ""}`} type="button" onClick={() => setSelectedDestination(PORTAL_DESTINATIONS[1].value)}><span>03 · RADAR</span><b>Focus Viral Radar</b><small>Disponible según los permisos definidos por administración. Si aún no está habilitado, se mostrará como herramienta en actualización.</small><strong>Seleccionar acceso →</strong></button>
+    </section>
+    <div className="access-selected-destination"><div><p className="eyebrow">{activeDestination.eyebrow}</p><h2>{activeDestination.heading}</h2></div><span className="access-destination-badge">{activeDestination.badge}</span></div>
+    <p className="intro">Escribe el correo activo en Focus Business. El enlace caduca en 15 minutos, funciona una sola vez y respeta los permisos configurados en Google Sheets.</p>
     <form className="access-form" onSubmit={requestLink}>
       <fieldset className="portal-destinations">
-        <legend>¿A dónde quieres entrar?</legend>
+        <legend>Herramienta seleccionada</legend>
         {visibleDestinations.map((item, index) => <div className="portal-destination" key={item.value}>
           <input id={`portal-destination-${index}`} type="radio" name="destination" value={item.value} checked={destination === item.value} onChange={() => setSelectedDestination(item.value)} />
           <label htmlFor={`portal-destination-${index}`}><b>{item.title}</b><small>{item.description}</small></label>
@@ -99,6 +103,6 @@ export default function SharedAccessPage() {
     {message && <p className="notice success">{message}</p>}
     {error && <p className="access-error" role="alert">{error}</p>}
     <p className="access-note">El primer uso invalida el enlace. Si solicitas uno nuevo, el anterior también deja de funcionar.</p>
-    <p className="access-note"><a href="/">Volver al formulario público.</a></p>
+    <p className="access-note"><a href="/">Volver al formulario inicial.</a></p>
   </section></main>;
 }

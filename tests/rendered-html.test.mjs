@@ -85,6 +85,9 @@ test("keeps optional choices clear and removes newsletter", async () => {
   const source = await readFile(new URL("../app/page.tsx", import.meta.url), "utf8");
   assert.match(source, /servicesOther/);
   assert.match(source, /sectorsOther/);
+  assert.match(source, /"Moda"/);
+  assert.match(source, /Sectores prioritarios \(selecciona hasta 3 o escribe otro\)/);
+  assert.match(source, /Otro sector prioritario \(por ejemplo: moda, deporte o turismo\)/);
   assert.match(source, /¿Quién recibe cada contacto\?/);
   assert.doesNotMatch(source, /Newsletter|Enlace al logo \(opcional\)|label="Tono de marca"/);
 });
@@ -177,12 +180,15 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(access, /api\/auth\/request-link/);
   assert.match(access, /Prospección/);
   assert.match(access, /Focus Viral Radar/);
-  assert.match(access, /directRadarAccess/);
+  assert.match(access, /Todo Focus Business en un solo lugar/);
+  assert.match(access, /Formulario inicial/);
   assert.match(access, /visibleDestinations/);
-  assert.match(access, /<main className="access">/);
+  assert.match(access, /<main className="access access-hub">/);
   assert.match(access, /PORTAL DE PROSPECCIÓN/);
   assert.match(access, /name="destination"/);
   assert.match(access, /radar\.focusbusinesslab\.es/);
+  assert.match(requestLink, /Focus Viral Radar está en actualización para esta cuenta/);
+  assert.match(requestLink, /No se envió un enlace de Radar/);
   assert.doesNotMatch(access, /Leads y clientes|Administración de clientes|ADMINISTRADOR|onboarding\.focusbusinesslab\.es\/portal/);
   assert.match(adminAccess, /Administración de clientes/);
   assert.match(adminAccess, /ADMINISTRADOR/);
@@ -192,6 +198,8 @@ test("requires a one-time magic-link session before opening the portal", async (
   assert.match(route, /isAdminRole\(access\.role\)/);
   assert.doesNotMatch(access, /type="password"/i);
   const globalStyles = await readFile(new URL("../app/globals.css", import.meta.url), "utf8");
+  const layout = await readFile(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.match(layout, /favicon\.svg/);
   assert.match(globalStyles, /\.access \{ --access-accent:var\(--gold\)/);
   assert.doesNotMatch(globalStyles, /\.access-(?:admin|radar)\s*\{\s*--access-accent/);
   assert.doesNotMatch(`${access}\n${adminAccess}`, /access-(?:admin|radar|prospection)/);

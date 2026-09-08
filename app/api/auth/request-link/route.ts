@@ -49,6 +49,13 @@ export async function POST(request: Request) {
     const destinationAllowed = access && (
       destination.startsWith("https://radar.focusbusinesslab.es") ? access.radar : access.prospection
     );
+    if (destination.startsWith("https://radar.focusbusinesslab.es") && access && !access.radar) {
+      return NextResponse.json({
+        ok: true,
+        availability: "updating",
+        message: "Focus Viral Radar está en actualización para esta cuenta. No se envió un enlace de Radar.",
+      });
+    }
     if (access && destinationAllowed) {
       stage = "create-one-time-link";
       const magic = await createMagicLogin({ email, role: access.role, returnTo: destination });
