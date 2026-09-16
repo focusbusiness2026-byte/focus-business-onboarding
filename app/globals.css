@@ -213,3 +213,51 @@ body { overflow-x:hidden }
   .copy-button { width:100%; min-height:40px }
   .validation-summary { margin:46px 0 22px; padding:15px }
 }
+
+/* Focus Business palette shared by the published form and access selector. */
+:root {
+  --ink:#06101e;
+  --panel:#0c1727;
+  --line:#d9af432e;
+  --gold:#d9af43;
+  --paper:#f7f5f0;
+  --muted:#b3aea2;
+}
+body,.focus-site-page,.access-hub {
+  background:radial-gradient(circle at 82% 8%,rgba(217,175,67,.09),transparent 25%),linear-gradient(135deg,#06101e,#0c1727);
+  color:var(--paper);
+}
+.access { --access-accent-soft:rgba(217,175,67,.08); --access-border:var(--line) }
+.sidebar,.portal-header { background:#06101e; border-color:var(--line) }
+.card,.access-card,.access-hub-card,.brand-color,.step-help,.setup-disclosure,
+.detail-group,.detail-card,.portal-account,.question-builder,.domain-option-heading,
+.domain-search,.meta-access,.guide-steps>li,.guide-alert,.guide-security,
+.access-resource-card,.portal-destination,.home-value-grid article,.home-kpis {
+  background:#0c1727;
+  border-color:var(--line);
+  color:var(--paper);
+}
+.purpose-note,.cost-notice,.completion-callout,.optional-fields-note,.notice {
+  background:#0c1727;
+  border-color:var(--line);
+  color:var(--paper);
+}
+.completion-callout { border-left-color:var(--gold) }
+input,select,textarea,.font-picker-toggle,.font-picker-panel {
+  background:#0c1727;
+  border-color:var(--line);
+  color:var(--paper);
+}
+input:focus-visible,select:focus-visible,textarea:focus-visible,
+button:focus-visible,a:focus-visible { outline:2px solid var(--gold); outline-offset:2px }
+.nav-step.current,.nav-step:hover,.chip.active,
+.font-picker-results button:hover,.font-picker-results button[aria-selected="true"],
+.access-resource-card:hover,.access-resource-card:focus-visible,.access-resource-card.selected {
+  background:#0c1727;
+  border-color:var(--gold);
+  color:var(--paper);
+}
+.primary,.access-button,.domain-check,.question-add { background:var(--gold); color:var(--ink); border-color:var(--gold) }
+.home-hero,.focus-site-page .home-hero {
+  background:radial-gradient(circle at 82% 8%,rgba(217,175,67,.09),transparent 25%),linear-gradient(135deg,#06101e,#0c1727);
+}
