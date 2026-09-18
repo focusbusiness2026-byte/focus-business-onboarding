@@ -11,11 +11,13 @@ const noStore = { "Cache-Control": "private, no-store" };
 async function authorize(request: Request, clientId: string, executionId?: string) {
   const identity = await introspectPortalSession(portalSessionFromRequest(request));
   if (!identity || !identity.radarAccess) return false;
+  if (["admin", "administrador"].includes(identity.role.trim().toLowerCase())) return true;
   const response = await quotaPost(new Request("https://onboarding.focusbusinesslab.es/api/radar-quota", {
     method: "POST",
     headers: { "content-type": "application/json", cookie: request.headers.get("cookie") || "" },
     body: JSON.stringify({ operation: executionId ? "receipt" : "access", clientId, executionId }),
   }));
+  if (response.status >= 500) throw new Error("La verificación del cliente no está disponible.");
   if (!response.ok) return false;
   const result = await response.json() as { ok?: boolean; consumed?: boolean; unlimited?: boolean };
   return result.ok === true && (!executionId || result.consumed === true || result.unlimited === true);
