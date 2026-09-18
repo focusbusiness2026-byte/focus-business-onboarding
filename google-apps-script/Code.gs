@@ -7,6 +7,9 @@
 const ONBOARDING_SHEET_ID = "1FTWbZ1gDpA4RezEz89w9PmbRjwx_2bX2mhzF67V8wiE";
 const ONBOARDING_TAB = "Onboarding";
 const ACCESS_TAB = "Accesos";
+const RADAR_QUOTA_TAB = "Radar cuotas";
+const RADAR_EXECUTIONS_TAB = "Radar ejecuciones";
+const RADAR_DEFAULT_EXECUTIONS = 50;
 const CLIENT_MONTHLY_SCRAPES = 50;
 const QUOTA_RENEWAL_HEADER = "Última renovación";
 const PROSPECTION_ACCESS_HEADER = "Acceso Prospección";
@@ -36,6 +39,7 @@ function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents || "{}");
     if (!isPortalToken(data._focusToken)) return json({ ok: false, error: "No autorizado" });
+    if (data.action === "radarQuota") return radarQuota(data);
     if (data.action === "delete") {
       const user = findActiveUser(data.email || "");
       if (!user) return json({ ok: false, error: "Acceso revocado o no autorizado" });
@@ -331,6 +335,7 @@ function safeCellValue(value) {
 
 function doGet(e) {
   try {
+    if (e.parameter.action === "radarQuotaStatus" && isPortalToken(e.parameter.token)) return json({ ok: true, version: 1 });
     if (e.parameter.action !== "portal" || !isPortalToken(e.parameter.token)) return json({ ok: false, error: "No autorizado" });
     const user = findActiveUser(e.parameter.email || "");
     if (!user) return json({ ok: false, error: "Acceso revocado o no autorizado" });
@@ -419,6 +424,84 @@ function recordBelongsToUser(row, headers, email) {
   const responsible = String(row[headers.indexOf("Email responsable")] || "").trim().toLowerCase();
   const corporate = String(row[headers.indexOf("Email corporativo")] || "").trim().toLowerCase();
   return normalized && (normalized === responsible || normalized === corporate);
+}
+
+function radarQuota(data) {
+  const user = findActiveUser(data.email || "");
+  if (!user || !user.radarAllowed) return json({ ok: false, code: "forbidden", error: "Acceso a Radar no autorizado" });
+  const clientId = String(data.clientId || "").trim().toUpperCase();
+  const executionId = String(data.executionId || "").trim();
+  const operation = String(data.operation || "");
+  if (!/^ONB-[A-F0-9]{8}$/.test(clientId) || !["balance", "reserve", "commit", "refund"].includes(operation) || (operation !== "balance" && !/^[a-f0-9-]{36}$/.test(executionId))) {
+    return json({ ok: false, code: "invalid", error: "Operación de Radar no válida" });
+  }
+  const onboarding = onboardingSheet().getDataRange().getValues();
+  const headers = onboarding[0];
+  const record = onboarding.slice(1).find((row) => String(row[0]).trim().toUpperCase() === clientId);
+  if (!record || (!isAdminRole(user.role) && !recordBelongsToUser(record, headers, user.email))) {
+    return json({ ok: false, code: "forbidden", error: "Cliente no autorizado" });
+  }
+  const admin = isAdminRole(user.role);
+  if (admin && operation !== "balance") return json({ ok: true, unlimited: true });
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return json({ ok: false, code: "busy", error: "La cuota está ocupada; inténtalo de nuevo" });
+  try {
+    const book = SpreadsheetApp.openById(ONBOARDING_SHEET_ID);
+    const quotaSheet = book.getSheetByName(RADAR_QUOTA_TAB);
+    const executionsSheet = book.getSheetByName(RADAR_EXECUTIONS_TAB);
+    if (!quotaSheet || !executionsSheet) return json({ ok: false, code: "unavailable", error: "Cuota de Radar no configurada" });
+    const quotaRows = quotaSheet.getDataRange().getValues();
+    let quotaRow = quotaRows.findIndex((row, index) => index > 0 && String(row[0]).trim().toUpperCase() === clientId) + 1;
+    if (!quotaRow) {
+      if (operation !== "reserve") return json({ ok: false, code: "missing", error: "Cuota del cliente no configurada" });
+      quotaRow = quotaSheet.getLastRow() + 1;
+      quotaSheet.getRange(quotaRow, 1, 1, 6).setValues([[clientId, RADAR_DEFAULT_EXECUTIONS, 0, `=MAX(0;B${quotaRow}-C${quotaRow})`, new Date(), ""]]);
+    }
+    const quota = quotaSheet.getRange(quotaRow, 1, 1, 4).getValues()[0];
+    const assigned = Number(quota[1]);
+    const used = Number(quota[2]);
+    if (!Number.isInteger(assigned) || assigned < 0 || !Number.isInteger(used) || used < 0) {
+      return json({ ok: false, code: "invalid_balance", error: "Revisa el saldo de Radar en la hoja" });
+    }
+    if (operation === "balance") return json({ ok: true, assigned, used, remaining: Math.max(0, assigned - used), unlimited: admin });
+    const entries = executionsSheet.getDataRange().getValues();
+    const entryRow = entries.findIndex((row, index) => index > 0 && String(row[0]).trim() === executionId) + 1;
+    if (operation === "reserve") {
+      if (entryRow) {
+        const entry = entries[entryRow - 1];
+        return json({ ok: entry[1] === clientId && entry[2] !== "reembolsada", code: "duplicate", remaining: Math.max(0, assigned - used) });
+      }
+      if (used >= assigned) return json({ ok: false, code: "quota_exhausted", remaining: 0, error: "Has agotado las ejecuciones de Radar" });
+      quotaSheet.getRange(quotaRow, 3).setValue(used + 1);
+      try {
+        executionsSheet.appendRow([executionId, clientId, "reservada", new Date(), "", "Guía creativa"]);
+      } catch (error) {
+        quotaSheet.getRange(quotaRow, 3).setValue(used);
+        throw error;
+      }
+      quotaSheet.getRange(quotaRow, 5).setValue(new Date());
+      return json({ ok: true, remaining: Math.max(0, assigned - used - 1) });
+    }
+    if (!entryRow || entries[entryRow - 1][1] !== clientId) return json({ ok: false, code: "missing", error: "Ejecución inexistente" });
+    const status = String(entries[entryRow - 1][2]);
+    if (operation === "commit") {
+      if (status === "reservada") {
+        executionsSheet.getRange(entryRow, 3).setValue("consumida");
+        executionsSheet.getRange(entryRow, 5).setValue(new Date());
+      }
+      return json({ ok: status !== "reembolsada", remaining: Math.max(0, assigned - used) });
+    }
+    if (status === "reservada") {
+      executionsSheet.getRange(entryRow, 3).setValue("reembolsada");
+      executionsSheet.getRange(entryRow, 5).setValue(new Date());
+      quotaSheet.getRange(quotaRow, 3).setValue(Math.max(0, used - 1));
+      quotaSheet.getRange(quotaRow, 5).setValue(new Date());
+      return json({ ok: true, remaining: Math.max(0, assigned - used + 1) });
+    }
+    return json({ ok: status === "reembolsada", remaining: Math.max(0, assigned - used) });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function isPortalToken(token) { return token && token === PropertiesService.getScriptProperties().getProperty("FOCUS_PORTAL_TOKEN"); }
