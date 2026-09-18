@@ -47,11 +47,13 @@ export async function POST(request: Request) {
           cache: "no-store",
           signal: AbortSignal.timeout(20_000),
         });
+        console.warn("radar_quota_status", { responseStatus: status.response.status, ready: status.payload.ok === true && status.payload.version === 1 });
         if (status.response.ok && status.payload.ok === true && status.payload.version === 1) {
           sheetUrl = endpoint;
           break;
         }
-      } catch {
+      } catch (error) {
+        console.warn("radar_quota_status_error", { name: error instanceof Error ? error.name : "unknown" });
         continue;
       }
     }
@@ -63,12 +65,14 @@ export async function POST(request: Request) {
       cache: "no-store",
       signal: AbortSignal.timeout(20_000),
     });
+    if (!response.ok || payload.ok !== true) console.warn("radar_quota_rejected", { responseStatus: response.status, code: payload.code || "unknown" });
     if (!response.ok || payload.ok !== true) {
       const status = payload.code === "quota_exhausted" ? 403 : payload.code === "forbidden" ? 403 : payload.code === "invalid" ? 400 : 503;
       return NextResponse.json({ ok: false, error: payload.error || "No se pudo comprobar el saldo de Radar.", code: payload.code }, { status });
     }
     return NextResponse.json({ ok: true, assigned: payload.assigned, used: payload.used, remaining: payload.remaining, unlimited: payload.unlimited === true }, { headers: { "Cache-Control": "no-store" } });
-  } catch {
+  } catch (error) {
+    console.error("radar_quota_error", { name: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ ok: false, error: "No se pudo comprobar el saldo de Radar." }, { status: 503 });
   }
 }
