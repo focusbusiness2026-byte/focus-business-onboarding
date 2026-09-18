@@ -58,13 +58,25 @@ export async function POST(request: Request) {
       }
     }
     if (!sheetUrl) throw new Error("Cuota de Radar pendiente de activación");
-    const { response, payload } = await fetchAppsScriptJson<QuotaResponse>(sheetUrl, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "radarQuota", operation, clientId, executionId, email: identity.email, _focusToken: token }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(20_000),
-    });
+    let quotaResult: Awaited<ReturnType<typeof fetchAppsScriptJson<QuotaResponse>>> | undefined;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        quotaResult = await fetchAppsScriptJson<QuotaResponse>(sheetUrl, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ action: "radarQuota", operation, clientId, executionId, email: identity.email, _focusToken: token }),
+          cache: "no-store",
+          signal: AbortSignal.timeout(20_000),
+        });
+        break;
+      } catch (error) {
+        if (attempt === 1) throw error;
+        console.warn("radar_quota_transport_retry", { name: error instanceof Error ? error.name : "unknown" });
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+    }
+    if (!quotaResult) throw new Error("Cuota de Radar sin respuesta");
+    const { response, payload } = quotaResult;
     if (!response.ok || payload.ok !== true) console.warn("radar_quota_rejected", { responseStatus: response.status, code: payload.code || "unknown" });
     if (!response.ok || payload.ok !== true) {
       const status = payload.code === "quota_exhausted" ? 403 : payload.code === "forbidden" ? 403 : payload.code === "invalid" ? 400 : 503;
