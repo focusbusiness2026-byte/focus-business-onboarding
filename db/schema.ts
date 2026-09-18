@@ -62,3 +62,20 @@ export const portalAccessPermissions = sqliteTable("portal_access_permissions", 
   radarAllowed: integer("radar_allowed", { mode: "boolean" }).notNull().default(false),
   updatedAt: text("updated_at").notNull(),
 });
+
+export const radarGuideHistory = sqliteTable(
+  "radar_guide_history",
+  {
+    executionId: text("execution_id").primaryKey(),
+    clientId: text("client_id").notNull(),
+    generatedAt: text("generated_at").notNull(),
+    itemId: text("item_id").notNull(),
+    goal: text("goal").notNull(),
+    title: text("title").notNull(),
+    producer: text("producer"),
+    network: text("network"),
+    referenceUrl: text("reference_url").notNull(),
+    recordJson: text("record_json").notNull(),
+  },
+  (table) => [index("idx_radar_guide_client_date").on(table.clientId, table.generatedAt)],
+);

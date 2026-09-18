@@ -11,6 +11,7 @@ type QuotaResponse = {
   assigned?: number;
   used?: number;
   unlimited?: boolean;
+  consumed?: boolean;
 };
 
 export async function POST(request: Request) {
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
   const operation = String(body.operation || "");
   const clientId = String(body.clientId || "").toUpperCase();
   const executionId = String(body.executionId || "");
-  if (!["balance", "reserve", "commit", "refund"].includes(operation) || !/^ONB-[A-F0-9]{8}$/.test(clientId) || (operation !== "balance" && !/^[a-f0-9-]{36}$/.test(executionId))) {
+  if (!["balance", "access", "receipt", "reserve", "commit", "refund"].includes(operation) || !/^ONB-[A-F0-9]{8}$/.test(clientId) || (!["balance", "access"].includes(operation) && !/^[a-f0-9-]{36}$/.test(executionId))) {
     return NextResponse.json({ ok: false, error: "Operación no válida." }, { status: 400 });
   }
 
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
       const status = payload.code === "quota_exhausted" ? 403 : payload.code === "forbidden" ? 403 : payload.code === "invalid" ? 400 : 503;
       return NextResponse.json({ ok: false, error: payload.error || "No se pudo comprobar el saldo de Radar.", code: payload.code }, { status });
     }
-    return NextResponse.json({ ok: true, assigned: payload.assigned, used: payload.used, remaining: payload.remaining, unlimited: payload.unlimited === true }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ ok: true, assigned: payload.assigned, used: payload.used, remaining: payload.remaining, unlimited: payload.unlimited === true, consumed: payload.consumed === true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("radar_quota_error", { name: error instanceof Error ? error.name : "unknown" });
     return NextResponse.json({ ok: false, error: "No se pudo comprobar el saldo de Radar." }, { status: 503 });
