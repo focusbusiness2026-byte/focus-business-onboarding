@@ -98,6 +98,22 @@ test("Radar balance reads only the selected client's row, including for administ
   assert.equal(selected.unlimited, true);
 });
 
+test("Radar guide history validates ownership and a consumed execution", () => {
+  const { call, user } = setup();
+  const id = randomUUID();
+  assert.equal(call("access", "ONB-A23D5DB5", "").ok, true);
+  assert.equal(call("access", "ONB-33296F71", "").code, "forbidden");
+  assert.equal(call("receipt", "ONB-A23D5DB5", id).ok, false);
+  assert.equal(call("reserve", "ONB-A23D5DB5", id).ok, true);
+  assert.equal(call("receipt", "ONB-A23D5DB5", id).ok, false);
+  assert.equal(call("commit", "ONB-A23D5DB5", id).ok, true);
+  assert.equal(call("receipt", "ONB-A23D5DB5", id).consumed, true);
+  assert.equal(call("receipt", "ONB-33296F71", id).code, "forbidden");
+  user.role = "Administrador";
+  assert.equal(call("access", "ONB-33296F71", "").unlimited, true);
+  assert.equal(call("receipt", "ONB-33296F71", randomUUID()).unlimited, true);
+});
+
 test("reading a client without a quota row never creates one", () => {
   const { call, quota } = setup();
   quota.rows.splice(1, 1);

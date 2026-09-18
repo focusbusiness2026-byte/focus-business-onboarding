@@ -432,7 +432,7 @@ function radarQuota(data) {
   const clientId = String(data.clientId || "").trim().toUpperCase();
   const executionId = String(data.executionId || "").trim();
   const operation = String(data.operation || "");
-  if (!/^ONB-[A-F0-9]{8}$/.test(clientId) || !["balance", "reserve", "commit", "refund"].includes(operation) || (operation !== "balance" && !/^[a-f0-9-]{36}$/.test(executionId))) {
+  if (!/^ONB-[A-F0-9]{8}$/.test(clientId) || !["balance", "access", "receipt", "reserve", "commit", "refund"].includes(operation) || (!["balance", "access"].includes(operation) && !/^[a-f0-9-]{36}$/.test(executionId))) {
     return json({ ok: false, code: "invalid", error: "Operación de Radar no válida" });
   }
   const onboarding = onboardingSheet().getDataRange().getValues();
@@ -442,6 +442,7 @@ function radarQuota(data) {
     return json({ ok: false, code: "forbidden", error: "Cliente no autorizado" });
   }
   const admin = isAdminRole(user.role);
+  if (operation === "access") return json({ ok: true, unlimited: admin });
   if (admin && operation !== "balance") return json({ ok: true, unlimited: true });
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return json({ ok: false, code: "busy", error: "La cuota está ocupada; inténtalo de nuevo" });
@@ -466,6 +467,7 @@ function radarQuota(data) {
     if (operation === "balance") return json({ ok: true, assigned, used, remaining: Math.max(0, assigned - used), unlimited: admin });
     const entries = executionsSheet.getDataRange().getValues();
     const entryRow = entries.findIndex((row, index) => index > 0 && String(row[0]).trim() === executionId) + 1;
+    if (operation === "receipt") return json({ ok: Boolean(entryRow && entries[entryRow - 1][1] === clientId && entries[entryRow - 1][2] === "consumida"), consumed: Boolean(entryRow && entries[entryRow - 1][1] === clientId && entries[entryRow - 1][2] === "consumida") });
     if (operation === "reserve") {
       if (entryRow) {
         const entry = entries[entryRow - 1];
