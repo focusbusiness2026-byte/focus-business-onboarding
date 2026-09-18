@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 import { introspectPortalSession } from "@/lib/portal-auth";
 import { portalSessionFromRequest } from "@/lib/portal-cookie";
-import { activeSheetAccess } from "@/lib/sheet-access";
 
 type QuotaResponse = {
   ok?: boolean;
@@ -35,8 +34,6 @@ export async function POST(request: Request) {
   }
 
   try {
-    const access = await activeSheetAccess(identity.email);
-    if (!access?.radar) return NextResponse.json({ ok: false, error: "Acceso a Radar no autorizado." }, { status: 403 });
     const endpoints = [...new Set([process.env.GOOGLE_SHEETS_PORTAL_URL, process.env.GOOGLE_SHEETS_WEBHOOK_URL].filter((url): url is string => Boolean(url)))];
     const token = process.env.FOCUS_PORTAL_TOKEN;
     if (!endpoints.length || !token) throw new Error("Cuota no configurada");
