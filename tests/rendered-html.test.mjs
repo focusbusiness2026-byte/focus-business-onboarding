@@ -295,16 +295,16 @@ test("accepts optional informational fields but requires final authorizations", 
 
   const authorizedMinimal = await requestApp(new Request("http://localhost/api/onboarding", {
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({
-      onboarding: { contactEmail: "persona@example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true },
+      onboarding: { companyName: "Demo", contactEmail: "persona@example.test", accuracy: true, terms: true, ghlPreparationAuthorization: true },
     }),
   }));
   assert.equal(authorizedMinimal.status, 502);
-  assert.match((await authorizedMinimal.json()).error, /Google Sheets no está configurado/);
+  assert.match((await authorizedMinimal.json()).error, /No se pudo completar el envío/);
 
   const route = await readFile(new URL("../app/api/onboarding/route.ts", import.meta.url), "utf8");
   assert.match(route, /containsSecretLikeValue/);
   assert.match(route, /PRIVATE KEY/);
-  assert.match(route, /status: validationError \? 400 : 502/);
+  assert.match(route, /status: validationError \? 400 : needsReview \? 409 : 502/);
 });
 
 test("accepts the complete six-step shape up to the disabled Sheets boundary", async () => {
@@ -332,7 +332,7 @@ test("accepts the complete six-step shape up to the disabled Sheets boundary", a
     method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ onboarding: payload }),
   }));
   assert.equal(response.status, 502);
-  assert.match((await response.json()).error, /Google Sheets no está configurado/);
+  assert.match((await response.json()).error, /No se pudo completar el envío/);
 
   payload.sectors = ["Tecnología", "Salud", "Industria", "Educación"];
   const sectorLimitResponse = await requestApp(new Request("http://localhost/api/onboarding", {
