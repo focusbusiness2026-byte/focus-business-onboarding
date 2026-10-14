@@ -4,12 +4,18 @@ import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
 type SheetsWriteResponse = {
   ok?: boolean;
+  saved?: boolean;
+  code?: string;
   id?: string;
   row?: number;
+  deduplicated?: boolean;
+  accessReady?: boolean;
   error?: string;
 };
 
 class SubmissionValidationError extends Error {}
+class SaveNotConfirmedError extends Error {}
+class SubmissionNeedsReviewError extends Error {}
 
 function nonEmptyText(value: unknown) {
   return typeof value === "string" && value.trim().length > 0;
@@ -27,6 +33,9 @@ function containsSecretLikeValue(value: unknown): boolean {
 }
 
 function validateSubmission(payload: Record<string, unknown>) {
+  if (!nonEmptyText(payload.companyName)) {
+    throw new SubmissionValidationError("Indica el nombre comercial de la empresa.");
+  }
   if (Array.isArray(payload.sectors) && payload.sectors.length > 3) {
     throw new SubmissionValidationError("Puedes seleccionar un máximo de 3 sectores prioritarios.");
   }
@@ -62,15 +71,23 @@ async function saveToGoogleSheets(payload: Record<string, unknown>) {
     throw new Error("Google Sheets no está configurado. Faltan GOOGLE_SHEETS_WEBHOOK_URL o FOCUS_PORTAL_TOKEN.");
   }
 
-  const { response, payload: result } = await fetchAppsScriptJson<SheetsWriteResponse>(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...payload, _focusToken: token }),
-  });
-  if (!response.ok || result.ok !== true) {
-    throw new Error(result.error || `Google Sheets devolvió el estado ${response.status}.`);
+  try {
+    const { response, payload: result } = await fetchAppsScriptJson<SheetsWriteResponse>(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, _focusToken: token }),
+    });
+    if (result.code === "identity_review") {
+      throw new SubmissionNeedsReviewError("Esta empresa ya tiene una ficha. Para corregir datos o cambiar el correo de acceso, contacta con soporte; no se ha modificado la ficha anterior.");
+    }
+    if (!response.ok || result.ok !== true || result.saved === false || !result.id) {
+      throw new SaveNotConfirmedError("No pudimos confirmar si la configuración quedó guardada. Puedes reintentar el envío sin crear otra ficha.");
+    }
+    return result;
+  } catch (error) {
+    if (error instanceof SubmissionNeedsReviewError) throw error;
+    throw new SaveNotConfirmedError("No pudimos confirmar si la configuración quedó guardada. Puedes reintentar el envío sin crear otra ficha.");
   }
-  return result;
 }
 
 async function sendMagicLink(email: string, magicToken: string) {
@@ -140,20 +157,22 @@ export async function POST(request: Request) {
     const onboardingId = String(sheets.id || "");
     let accessLinkSent = false;
     let issuedMagicToken = "";
-    try {
-      const { createMagicLogin } = await import("@/lib/portal-auth");
-      const access = await createMagicLogin({ email: accountEmail, onboardingId, role: "Cliente" });
-      issuedMagicToken = access.magicToken;
-      if (access.magicToken) {
-        await sendMagicLink(access.email, access.magicToken);
-        accessLinkSent = true;
+    if (sheets.accessReady !== false) {
+      try {
+        const { createMagicLogin } = await import("@/lib/portal-auth");
+        const access = await createMagicLogin({ email: accountEmail, onboardingId, role: "Cliente" });
+        issuedMagicToken = access.magicToken;
+        if (access.magicToken) {
+          await sendMagicLink(access.email, access.magicToken);
+          accessLinkSent = true;
+        }
+      } catch {
+        if (issuedMagicToken) {
+          const { invalidateMagicLogin } = await import("@/lib/portal-auth");
+          await invalidateMagicLogin(issuedMagicToken).catch(() => undefined);
+        }
+        accessLinkSent = false;
       }
-    } catch {
-      if (issuedMagicToken) {
-        const { invalidateMagicLogin } = await import("@/lib/portal-auth");
-        await invalidateMagicLogin(issuedMagicToken).catch(() => undefined);
-      }
-      accessLinkSent = false;
     }
     const downstreamProfile = buildDownstreamProfile(payload, onboardingId);
     const [prospection, viralRadar] = await Promise.all([
@@ -162,18 +181,25 @@ export async function POST(request: Request) {
     ]);
     return NextResponse.json({
       ok: true,
-      saved: { id: sheets.id, row: sheets.row, submittedAt: payload.submittedAt },
+      saved: { confirmed: true, id: sheets.id, row: sheets.row, deduplicated: sheets.deduplicated === true, submittedAt: payload.submittedAt },
       sheets: { configured: true },
       prospection,
       viralRadar,
-      account: { email: accountEmail, accessLinkSent, passwordCollected: false, passwordStoredInSheets: false },
+      account: { email: accountEmail, accessReady: sheets.accessReady !== false, accessLinkSent, passwordCollected: false, passwordStoredInSheets: false },
       downstream: { schemaVersion: downstreamProfile.schema_version, externalSearchStarted: false },
     });
   } catch (error) {
     const validationError = error instanceof SubmissionValidationError;
+    const saveNotConfirmed = error instanceof SaveNotConfirmedError;
+    const needsReview = error instanceof SubmissionNeedsReviewError;
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "No se pudo guardar el registro en Google Sheets." },
-      { status: validationError ? 400 : 502 },
+      {
+        ok: false,
+        saved: { confirmed: false },
+        error: saveNotConfirmed || needsReview ? error.message : validationError && error instanceof Error
+          ? error.message : "No se pudo completar el envío. Contacta con soporte si el problema continúa.",
+      },
+      { status: validationError ? 400 : needsReview ? 409 : 502 },
     );
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-html-link-for-pages */
 
-import { createContext, FormEvent, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, FormEvent, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 type FormState = Record<string, string | string[] | boolean>;
 type FormErrors = Record<string, string>;
@@ -136,7 +136,7 @@ const regionsByCountry: Record<string, string[]> = {
   "Estados Unidos": ["Alabama", "Alaska", "Arizona", "Arkansas", "California", "Carolina del Norte", "Carolina del Sur", "Colorado", "Connecticut", "Dakota del Norte", "Dakota del Sur", "Delaware", "Distrito de Columbia", "Florida", "Georgia", "Hawái", "Idaho", "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Luisiana", "Maine", "Maryland", "Massachusetts", "Míchigan", "Minnesota", "Misisipi", "Misuri", "Montana", "Nebraska", "Nevada", "Nueva Hampshire", "Nueva Jersey", "Nueva York", "Nuevo México", "Ohio", "Oklahoma", "Oregón", "Pensilvania", "Rhode Island", "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Virginia Occidental", "Washington", "Wisconsin", "Wyoming"],
 };
 const requiredByStep = [
-  [],
+  ["companyName"],
   [],
   [],
   [],
@@ -313,11 +313,13 @@ function LeadQuestionBuilder() {
 export default function Home() {
   const [step, setStep] = useState(0);
   const [data, setData] = useState<FormState>(initial);
-  const [status, setStatus] = useState<"idle" | "saving" | "sent" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "saving" | "sent" | "sent-without-link" | "error">("idle");
   const [draftReady, setDraftReady] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
   const [helpOpen, setHelpOpen] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
+  const [accessSetupReady, setAccessSetupReady] = useState(true);
+  const submissionPending = useRef(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -443,6 +445,7 @@ export default function Home() {
   };
   async function submit(event: FormEvent) {
     event.preventDefault();
+    if (submissionPending.current) return;
     for (let index = 0; index < requiredByStep.length; index += 1) {
       if (!validate(index)) {
         if (index !== step) {
@@ -454,6 +457,7 @@ export default function Home() {
         return;
       }
     }
+    submissionPending.current = true;
     setStatus("saving");
     setSubmissionError("");
     const payload = { ...data, submittedAt: new Date().toISOString(), source: "focus-productora-onboarding" };
@@ -466,11 +470,17 @@ export default function Home() {
       });
       const result = await response.json();
       if (!response.ok || !result.ok) throw new Error(result.error || "No se pudo guardar la configuración");
-      localStorage.removeItem("focus-productora-draft");
-      setStatus("sent");
+      const ready = result.account?.accessReady !== false;
+      if (ready) localStorage.removeItem("focus-productora-draft");
+      setAccessSetupReady(ready);
+      setStatus(result.account?.accessLinkSent === true ? "sent" : "sent-without-link");
     } catch (submitError) {
-      setSubmissionError(submitError instanceof Error ? submitError.message : "No se pudo guardar la configuración.");
+      setSubmissionError(submitError instanceof SyntaxError || submitError instanceof TypeError
+        ? "No pudimos confirmar si se guardó la configuración. Puedes reintentar el envío sin crear otra ficha."
+        : submitError instanceof Error ? submitError.message : "No pudimos confirmar el guardado. Puedes reintentar el envío.");
       setStatus("error");
+    } finally {
+      submissionPending.current = false;
     }
   }
 
@@ -492,6 +502,7 @@ export default function Home() {
         {step === 3 && <details className="setup-disclosure domain-disclosure"><summary>Dominio para configurar GoHighLevel</summary><div className="domain-option-heading"><span>OPCIÓN 1 · RECOMENDADA</span><h2>Buscar un dominio nuevo</h2><p>El dominio elegido se utilizará para configurar la cuenta de GoHighLevel, sus subdominios, el portal, las páginas de aterrizaje y el envío de correos automáticos.</p></div><DomainSearch /><details className="domain-own-option"><summary><span>Opción 2 · utilizar un dominio ya registrado</span><b>MÁS COMPLEJA</b></summary><div><div className="domain-warning-detailed"><h3>Por qué no recomendamos esta opción</h3><p>Utilizar un dominio que ya está en uso obliga a coordinar cambios técnicos con la persona o proveedor que lo administra. Un registro incorrecto puede afectar temporalmente la web o el correo de la empresa.</p><ul><li>Necesitaremos una videollamada con la persona que tenga acceso al registrador o DNS.</li><li>Habrá que identificar qué servicios actuales dependen del dominio antes de modificarlo.</li><li>Se crearán y verificarán varios subdominios para portal, páginas, formularios y correo.</li><li>La autenticación de correo puede requerir registros SPF, DKIM y DMARC sin sobrescribir los existentes.</li><li>Los cambios dependen del proveedor y pueden tardar por la propagación DNS.</li><li>Si el acceso no está disponible o lo gestiona un tercero, la configuración puede quedar detenida hasta coordinarlo.</li></ul><p><b>Elige esta opción únicamente si necesitas conservar tu dominio actual y puedes facilitar la coordinación técnica.</b> Si buscas una configuración más rápida y aislada de tu web y correo actuales, utiliza la opción recomendada.</p></div><div className="grid two"><Text field="existingDomainName" label="Dominio que ya tienes registrado" placeholder="Ej. tuproductora.com" /><Select field="existingDomainAccess" label="¿Quién puede configurar el dominio?" items={["Yo tengo acceso al registrador", "Lo gestiona otra persona o proveedor", "Necesito ayuda para localizar el acceso", "No lo sé"]} /><Select field="existingDomainMeeting" label="Videollamada para la configuración" items={["Puedo realizarla", "Necesito coordinar fecha", "Prefiero utilizar la opción recomendada"]} /><Select field="subdomainPurpose" label="Uso principal" items={["Cuenta y portal de GoHighLevel", "Landing pages y formularios", "Correos automáticos", "Todo lo anterior", "Otro"]} /></div><ul><li>Se crearán los subdominios necesarios.</li><li>Se configurarán CNAME y registros de verificación.</li><li>Para el correo se revisarán SPF, DKIM y DMARC cuando corresponda.</li><li>La propagación DNS puede tardar de minutos a horas.</li></ul><p>No escribas contraseñas ni claves del registrador en este formulario.</p></div></details></details>}
         {step === 4 && <><details className="setup-disclosure"><summary>Integración oficial de WhatsApp Business</summary><div className="purpose-note"><strong>Conexión independiente</strong><p>WhatsApp se conecta después mediante la integración oficial de WhatsApp Business Platform disponible en GoHighLevel. No escribas contraseñas, códigos ni claves en este formulario.</p></div><div className="grid three"><Select field="whatsappSetup" label="¿Quieres incorporar WhatsApp?" items={["No", "Sí, conectar WhatsApp Business", "Ya utilizamos WhatsApp Business", "Necesitamos asesoramiento"]} /><Select field="whatsappBusinessAccount" label="Estado de WhatsApp Business" items={["Cuenta de WhatsApp Business activa", "Tenemos número, falta preparar la cuenta", "Necesitamos crear o revisar la cuenta", "No lo sé"]} /><Text field="whatsappDisplayNumber" label="Número de WhatsApp Business" placeholder="Indícalo solo si ya existe" /></div><Select field="whatsappCostAcceptance" label="Información sobre costes" items={["Entiendo que WhatsApp puede generar cargos directos de la plataforma", "Necesito recibir información antes de decidir", "No aplica"]} /><a className="guide-link" href="/guias/whatsapp?returnStep=4">Ver guía completa de WhatsApp Business →</a><p className="intro">El envío del formulario no conecta WhatsApp ni activa mensajes.</p></details><details className="setup-disclosure"><summary>Llamadas desde GoHighLevel</summary><div className="purpose-note"><strong>Telefonía con coste adicional</strong><p>Para un sistema telefónico completo suele utilizarse un número contratado o portado a GoHighLevel. En algunos casos se puede verificar un número existente para llamadas salientes. La plataforma puede cobrar por el número, las llamadas y funciones como la grabación. No se activa nada al enviar este formulario.</p></div><div className="grid three"><Select field="callingSetup" label="¿Harán llamadas desde la plataforma?" items={["No", "Sí, llamadas salientes", "Sí, llamadas entrantes y salientes", "Necesitamos asesoramiento"]} /><Select field="callingNumberChoice" label="Configuración del número de llamadas" items={["Necesitamos comprar o portar un número", "Queremos verificar un número existente para llamadas salientes", "Ya tenemos telefonía configurada", "Necesitamos revisar disponibilidad y costes"]} /><Text field="callingDisplayNumber" label="Número local que quieren mostrar al cliente" placeholder="Ej. +34...; se verificará compatibilidad y normativa" /></div><div className="grid two"><Select field="callRecording" label="¿Se grabarán las llamadas?" items={["Sí, cuando sea legal y esté informado", "No", "Pendiente de revisión legal"]} /><Select field="callRecordingNotice" label="Confirmación sobre grabación" items={["Informaremos y obtendremos los consentimientos necesarios", "Necesitamos asesoramiento legal", "No aplica"]} /></div><a className="guide-link" href="/guias/telefonia?returnStep=4">Ver guía de telefonía y costes →</a><p className="intro">Mostrar un número local depende de que pueda verificarse y de la disponibilidad del país. La grabación debe cumplir la normativa aplicable.</p></details></>}
         <footer><button type="button" className="secondary" onClick={() => goToStep(Math.max(0, step - 1))} disabled={step === 0}>← Anterior</button>{step < steps.length - 1 ? <button type="button" className="primary" onClick={() => { if (validate(step)) goToStep(step + 1); }}>Continuar →</button> : <button className="primary" type="submit" disabled={status === "saving"}>{status === "saving" ? "Enviando…" : "Enviar configuración →"}</button>}</footer>
+        {step === 5 && status === "sent-without-link" && <div className="notice success" role="status">{accessSetupReady ? <>Tu configuración quedó guardada. El enlace de acceso no se pudo enviar ahora. Puedes <a href="/access">solicitar uno nuevo</a> con tu correo sin volver a completar el formulario.</> : <>Tu configuración quedó guardada, pero el acceso sigue pendiente. Reenvía este formulario para completar la habilitación sin crear otra ficha, o contacta con soporte.</>}</div>}
       </form>
     </section>
   </main></FieldContext.Provider>;

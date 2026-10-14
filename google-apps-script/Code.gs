@@ -48,14 +48,114 @@ function doPost(e) {
     if (data.action === "sendMagicLogin") {
       return sendMagicLogin(data.email, data.magicUrl);
     }
-    const sheet = onboardingSheet();
-    const id = `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
-    const values = ONBOARDING_HEADERS.map((header) => safeCellValue(valueFor(header, { ...data, _recordId: id })));
-    sheet.appendRow(values);
-    ensureClientAccess(data.contactEmail || data.businessEmail || "");
-    return json({ ok: true, id, row: sheet.getLastRow() });
+    return saveOnboardingSubmission(data);
   } catch (error) {
-    return json({ ok: false, error: String(error && error.message ? error.message : error) });
+    return json({ ok: false, code: error && error.code ? error.code : "write_failed", error: String(error && error.message ? error.message : error) });
+  }
+}
+
+function onboardingIdentityReview(message) {
+  const error = new Error(message);
+  error.code = "identity_review";
+  return error;
+}
+
+function normalizedOnboardingCompany(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizedOnboardingEmail(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function normalizedOnboardingWebsite(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "";
+  const hostname = raw.replace(/^https?:\/\//i, "").split(/[/?#]/, 1)[0]
+    .replace(/:\d+$/, "").toLowerCase().replace(/^www\./, "").replace(/\.$/, "");
+  return /^[a-z0-9.-]+\.[a-z]{2,}$/.test(hostname) ? hostname : "";
+}
+
+function findOnboardingSubmission(sheet, data) {
+  const rows = sheet.getDataRange().getValues();
+  const headers = (rows[0] || []).map((header) => String(header || "").trim());
+  const index = (header) => headers.indexOf(header);
+  if (!ONBOARDING_HEADERS.every((header, column) => headers[column] === header)) {
+    throw new Error("La pestaña Onboarding no tiene los encabezados esperados en su orden original.");
+  }
+  const company = normalizedOnboardingCompany(data.companyName);
+  const emails = [data.contactEmail, data.businessEmail].map(normalizedOnboardingEmail).filter(Boolean);
+  const website = normalizedOnboardingWebsite(data.website);
+  const emailMatches = [];
+  const websiteMatches = [];
+  for (let offset = 1; offset < rows.length; offset += 1) {
+    const row = rows[offset];
+    if (normalizedOnboardingCompany(row[index("Empresa")]) !== company) continue;
+    const existingEmails = [row[index("Email responsable")], row[index("Email corporativo")]]
+      .map(normalizedOnboardingEmail).filter(Boolean);
+    const emailMatch = emails.some((email) => existingEmails.includes(email));
+    const websiteMatch = website && website === normalizedOnboardingWebsite(row[index("Web")]);
+    if (emailMatch) emailMatches.push({ row: offset + 1, values: row });
+    if (websiteMatch) websiteMatches.push({ row: offset + 1, values: row });
+  }
+  // If the email and website point to different historical identities, do not overwrite either one.
+  if (emailMatches.length && websiteMatches.length &&
+      !emailMatches.some((match) => websiteMatches.some((other) => other.row === match.row))) {
+    throw onboardingIdentityReview("La identidad de la empresa requiere revisión antes de guardar.");
+  }
+  // A public website is not proof of ownership: never attach an unfamiliar email to an existing ID.
+  if (!emailMatches.length && websiteMatches.length) {
+    throw onboardingIdentityReview("Esta empresa ya existe y el correo de contacto requiere verificación por soporte.");
+  }
+  const matches = emailMatches;
+  if (!matches.length) return null;
+  const selected = matches[matches.length - 1];
+  const id = String(selected.values[index("ID registro")] || "").trim();
+  if (!id) throw onboardingIdentityReview("El registro anterior no tiene ID; requiere revisión.");
+  return { id, row: selected.row, values: selected.values };
+}
+
+function sameOnboardingAnswers(existing, candidate) {
+  const internal = new Set(["ID registro", "Fecha envío", "Estado", "Config. técnica URL", "Notas internas", "Subcuenta GHL", "Preparación prospección", "Preparación subcuenta GHL", "Validación subcuenta GHL"]);
+  const asComparable = (value) => value === null || value === undefined ? "" : String(value).trim().replace(/^'(?=[=+\-@])/, "");
+  return ONBOARDING_HEADERS.every((header, column) => internal.has(header) ||
+    asComparable(existing[column]) === asComparable(candidate[column]));
+}
+
+function saveOnboardingSubmission(data) {
+  const company = normalizedOnboardingCompany(data.companyName);
+  const email = normalizedOnboardingEmail(data.contactEmail || data.businessEmail);
+  if (!company || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return json({ ok: false, error: "Indica la empresa y un correo de contacto válido." });
+  }
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return json({ ok: false, code: "busy", error: "El formulario está ocupado. Inténtalo de nuevo." });
+  try {
+    const sheet = onboardingSheet(false);
+    const existing = findOnboardingSubmission(sheet, data);
+    const id = existing ? existing.id : `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
+    const values = ONBOARDING_HEADERS.map((header) => safeCellValue(valueFor(header, { ...data, _recordId: id })));
+    let row;
+    if (existing) {
+      // The public form does not verify email ownership before saving. Retry only; no public overwrite.
+      if (!sameOnboardingAnswers(existing.values, values)) {
+        throw onboardingIdentityReview("Esta empresa ya tiene una ficha con datos distintos. Contacta con soporte para revisar cambios.");
+      }
+      row = existing.row;
+    } else {
+      sheet.appendRow(values);
+      row = sheet.getLastRow();
+    }
+    // A later access-sheet failure must not report a successful sheet write as unsaved.
+    let accessReady = true;
+    try {
+      accessReady = ensureClientAccess(email) !== false;
+    } catch (error) {
+      accessReady = false;
+    }
+    return json({ ok: true, saved: true, id, row, deduplicated: Boolean(existing), accessReady });
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -144,39 +244,19 @@ function ensureClientAccess(email) {
   const emailIndex = headers.indexOf("Correo autorizado");
   const roleIndex = headers.indexOf("Rol");
   const statusIndex = headers.indexOf("Estado");
-  const updatedIndex = headers.indexOf("Última actualización");
   const assignedIndex = headers.indexOf("Raspados asignados");
   const usedIndex = headers.indexOf("Raspados usados");
   const availableIndex = headers.indexOf("Raspados disponibles");
   const percentageIndex = headers.indexOf("% disponible");
   const quotaStatusIndex = headers.indexOf("Estado cuota");
-  const renewalIndex = headers.indexOf(QUOTA_RENEWAL_HEADER);
-  const prospectionAccessIndex = headers.indexOf(PROSPECTION_ACCESS_HEADER);
-  const radarAccessIndex = headers.indexOf(RADAR_ACCESS_HEADER);
   if (emailIndex < 0 || roleIndex < 0 || statusIndex < 0) {
     throw new Error("La pestaña Accesos debe contener Correo autorizado, Rol y Estado");
   }
   const existingIndex = values.findIndex((row, index) => index > 0 && String(row[emailIndex]).trim().toLowerCase() === normalized);
   if (existingIndex > 0) {
-    const role = String(values[existingIndex][roleIndex] || "").trim();
-    const resolvedRole = role || "Cliente";
-    const rowNumber = existingIndex + 1;
-    if (!role) sheet.getRange(rowNumber, roleIndex + 1).setValue(resolvedRole);
-    sheet.getRange(rowNumber, statusIndex + 1).setValue("Activo");
-    if (updatedIndex >= 0) sheet.getRange(rowNumber, updatedIndex + 1).setValue(new Date());
-    if (!isAdminRole(resolvedRole) && assignedIndex >= 0) {
-      sheet.getRange(rowNumber, assignedIndex + 1).setValue(CLIENT_MONTHLY_SCRAPES);
-      if (renewalIndex >= 0 && !values[existingIndex][renewalIndex]) {
-        sheet.getRange(rowNumber, renewalIndex + 1).setValue(new Date());
-      }
-    }
-    if (prospectionAccessIndex >= 0 && !values[existingIndex][prospectionAccessIndex]) {
-      sheet.getRange(rowNumber, prospectionAccessIndex + 1).setValue(ACCESS_ALLOWED);
-    }
-    if (radarAccessIndex >= 0 && !values[existingIndex][radarAccessIndex]) {
-      sheet.getRange(rowNumber, radarAccessIndex + 1).setValue(isAdminRole(resolvedRole) ? ACCESS_ALLOWED : ACCESS_BLOCKED);
-    }
-    return;
+    const status = String(values[existingIndex][statusIndex] || "").trim().toLowerCase();
+    // A public retry cannot reactivate access, grant a product, or reset quotas/renewal/role.
+    return status === "activo";
   }
   const row = headers.map((header) => {
     if (header === "Correo autorizado") return normalized;
@@ -201,6 +281,7 @@ function ensureClientAccess(email) {
   if (availableIndex >= 0 && percentageIndex >= 0 && quotaStatusIndex >= 0) {
     sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(roleIndex + 1)}${newRow}="Administrador";"Ilimitado";IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible"))))`);
   }
+  return true;
 }
 
 function syncExistingClientAccessFromOnboarding() {
@@ -356,9 +437,9 @@ function doGet(e) {
   }
 }
 
-function onboardingSheet() {
+function onboardingSheet(migrate) {
   const sheet = SpreadsheetApp.openById(ONBOARDING_SHEET_ID).getSheetByName(ONBOARDING_TAB);
-  ensureOnboardingHeaders(sheet);
+  if (migrate !== false) ensureOnboardingHeaders(sheet);
   return sheet;
 }
 
