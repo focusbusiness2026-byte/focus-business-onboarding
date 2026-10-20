@@ -55,6 +55,64 @@ export async function createShortInvitation(email: string) {
   return { token, expiresAt };
 }
 
+export async function consumePublicSignupAllowance(ip: string) {
+  const secret = process.env.FOCUS_PORTAL_TOKEN;
+  if (!secret) throw new Error("La protección del alta no está configurada.");
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const visitorHash = [...new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(ip || "unknown")))]
+    .map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  const windowStart = new Date(Math.floor(Date.now() / 3_600_000) * 3_600_000).toISOString();
+  const limit = ip ? 10 : 100;
+  const result = await database().prepare(`INSERT INTO public_short_signup_limits (visitor_hash, window_start, attempts)
+    VALUES (?, ?, 1) ON CONFLICT(visitor_hash) DO UPDATE SET
+    attempts = CASE WHEN window_start = excluded.window_start THEN attempts + 1 ELSE 1 END,
+    window_start = excluded.window_start
+    WHERE window_start <> excluded.window_start OR attempts < ?`)
+    .bind(visitorHash, windowStart, limit).run();
+  return Number(result.meta?.changes || 0) === 1;
+}
+
+export async function createPublicShortSignup(signup: ShortSignup) {
+  const db = database();
+  const now = new Date();
+  const nowIso = now.toISOString();
+  const payload = JSON.stringify(signup);
+  const previous = await db.prepare(`SELECT * FROM short_invitations
+    WHERE email = ? AND submitted_at IS NOT NULL AND activated_at IS NULL
+    ORDER BY submitted_at DESC LIMIT 1`).bind(signup.email).first<InvitationRow>();
+  if (previous) {
+    if (previous.payload_json !== payload) {
+      throw new Error("Ya hay una solicitud pendiente para este correo. Contacta con soporte para cambiar los datos.");
+    }
+    if (previous.expires_at > nowIso) return { record: previous, shouldSend: false };
+    const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const renewed = await db.prepare(`UPDATE short_invitations SET expires_at = ?, submitted_at = ?
+      WHERE token_hash = ? AND activated_at IS NULL AND expires_at <= ?`)
+      .bind(expiresAt, nowIso, previous.token_hash, nowIso).run();
+    if (Number(renewed.meta?.changes || 0) !== 1) throw new Error("La solicitud cambió. Vuelve a intentarlo.");
+    return { record: { ...previous, expires_at: expiresAt, submitted_at: nowIso }, shouldSend: true };
+  }
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  const tokenHash = await hashShortToken(base64Url(bytes));
+  const expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+  try {
+    await db.prepare(`INSERT INTO short_invitations
+      (token_hash, email, expires_at, created_at, submitted_at, payload_json)
+      VALUES (?, ?, ?, ?, ?, ?)`).bind(tokenHash, signup.email, expiresAt, nowIso, nowIso, payload).run();
+  } catch {
+    // The unique pending-email index may have won a concurrent submission.
+    const concurrent = await db.prepare(`SELECT * FROM short_invitations
+      WHERE email = ? AND submitted_at IS NOT NULL AND activated_at IS NULL
+      ORDER BY submitted_at DESC LIMIT 1`).bind(signup.email).first<InvitationRow>();
+    if (concurrent?.payload_json === payload) return { record: concurrent, shouldSend: false };
+    throw new Error("Ya hay una solicitud pendiente para este correo.");
+  }
+  return { record: { token_hash: tokenHash, email: signup.email, expires_at: expiresAt,
+    submitted_at: nowIso, activated_at: null, payload_json: payload, onboarding_id: null }, shouldSend: true };
+}
+
 export async function findShortInvitation(raw: string) {
   if (!/^[A-Za-z0-9_-]{40,64}$/.test(raw)) return null;
   const result = await database().prepare(`SELECT * FROM short_invitations WHERE token_hash = ?`)
@@ -80,8 +138,8 @@ export async function claimShortInvitation(raw: string, signup: ShortSignup) {
 
 export async function pendingShortSignup(email: string) {
   return database().prepare(`SELECT * FROM short_invitations
-    WHERE email = ? AND submitted_at IS NOT NULL AND activated_at IS NULL
-    ORDER BY submitted_at DESC LIMIT 1`).bind(email).first<InvitationRow>();
+    WHERE email = ? AND submitted_at IS NOT NULL AND activated_at IS NULL AND expires_at > ?
+    ORDER BY submitted_at DESC LIMIT 1`).bind(email, new Date().toISOString()).first<InvitationRow>();
 }
 
 export async function finishShortSignup(tokenHash: string, onboardingId: string) {

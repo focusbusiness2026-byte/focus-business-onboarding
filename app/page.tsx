@@ -486,7 +486,10 @@ export default function Home() {
 
   return <FieldContext.Provider value={{ data, errors: fieldErrors, setValue, toggle }}><main>
     <aside className="sidebar"><a className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></a><p className="eyebrow">CONFIGURACIÓN INICIAL</p><nav>{steps.map(([name, detail], index) => <button type="button" key={name} className={index === step ? "nav-step current" : "nav-step"} onClick={() => goToStep(index)}><b>{String(index + 1).padStart(2, "0")}</b><span>{name}<small>{detail}</small></span></button>)}</nav><div className="help"><strong>¿Necesitas ayuda?</strong><p>Guardamos tu avance automáticamente.</p><a href="mailto:hola@focusbusiness.es">Contactar soporte →</a></div></aside>
-    <section className="content"><header><div><p className="eyebrow">PASO {step + 1} DE {steps.length}</p><div className="progress"><i style={{ width: `${completion}%` }} /></div></div></header>
+    <section className="content"><div className="onboarding-choices" aria-label="Elige el tipo de alta">
+      <div className="onboarding-choice selected"><span>FORMULARIO COMPLETO</span><strong>Configuración de servicios</strong><small>El proceso original de seis pasos.</small></div>
+      <a className="onboarding-choice" href="/alta-herramientas"><span>FORMULARIO BÁSICO</span><strong>Solo Prospección o Radar →</strong><small>Nombre, correo, empresa y una breve descripción. Web opcional.</small></a>
+    </div><header><div><p className="eyebrow">PASO {step + 1} DE {steps.length}</p><div className="progress"><i style={{ width: `${completion}%` }} /></div></div></header>
       <form onSubmit={submit} noValidate className="card">
         <button type="button" className="info-button" aria-label={`Abrir ayuda del paso ${step + 1}`} aria-expanded={helpOpen} onClick={() => setHelpOpen((open) => !open)}>i</button>
         {helpOpen && <aside className="step-help" aria-live="polite"><div><p className="eyebrow">GUÍA DEL PASO</p><h2>{helpByStep[step].title}</h2></div><button type="button" className="help-close" aria-label="Cerrar ayuda" onClick={() => setHelpOpen(false)}>×</button><dl>{helpByStep[step].items.map(([term, explanation]) => <div key={term}><dt>{term}</dt><dd>{explanation}</dd></div>)}</dl></aside>}

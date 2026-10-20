@@ -15,6 +15,7 @@ Aplicación multipaso con dos finalidades exclusivas: configurar la captación/p
 - Portal operativo en `/portal`; la ruta heredada `/admin` redirige allí y la exportación D1 heredada está desactivada.
 - Acceso unificado por correo mediante enlace de un solo uso: caduca en 15 minutos, se invalida al primer canje y reemplaza cualquier sesión anterior del mismo correo.
 - Vista pública de diseño del portal en `/portal-demo`, con una productora ficticia.
+- Opción visible en la portada para abrir un formulario básico independiente en `/alta-herramientas`: nombre, apellidos, correo, empresa, oferta, web opcional y elección de Prospección/Radar. El correo debe confirmarse antes de activar acceso y cuota; el formulario completo de seis pasos se conserva.
 
 ## Para activar las integraciones
 

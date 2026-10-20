@@ -52,15 +52,16 @@ export default function ShortOnboardingPage() {
 
   return <main className="access"><section className="access-card short-onboarding-card">
     <Link className="brand" href="/"><i>F</i><span>FOCUS<small>BUSINESS</small></span></Link>
-    <p className="eyebrow">ALTA PRIVADA · HERRAMIENTAS</p>
+    <p className="eyebrow">ALTA BÁSICA · PROSPECCIÓN Y RADAR</p>
     <h1>Empieza con Focus Business</h1>
-    <p className="intro">Unos pocos datos para preparar tu perfil. No necesitas completar el onboarding de servicios de agencia.</p>
-    {!valid && !error && <p className="intro">Comprobando invitación…</p>}
+    <p className="intro">Completa solo los datos esenciales para Prospección, Radar o ambos. La web es opcional y el acceso se activa después de confirmar tu correo.</p>
+    <Link className="short-full-link" href="/">¿Necesitas la configuración completa? Abrir el formulario original →</Link>
+    {!valid && !error && <p className="intro">{invite ? "Comprobando invitación…" : "Preparando formulario…"}</p>}
     {valid && submitted && <p className="notice success" role="status">{message || "Tu solicitud está enviada. Revisa tu correo para confirmar el acceso."}</p>}
     {valid && !submitted && <form className="short-onboarding-form" onSubmit={submit}>
       <div className="grid two"><label className="input"><span>Nombre</span><input name="firstName" maxLength={100} required autoComplete="given-name" /></label>
       <label className="input"><span>Apellido</span><input name="lastName" maxLength={100} required autoComplete="family-name" /></label></div>
-      <label className="input"><span>Correo de la invitación</span><input type="email" value={email} readOnly /></label>
+      <label className="input"><span>{invite ? "Correo de la invitación" : "Correo electrónico"}</span><input type="email" value={email} onChange={(event) => setEmail(event.target.value)} readOnly={Boolean(invite)} required autoComplete="email" /></label>
       <label className="input"><span>Empresa</span><input name="companyName" maxLength={160} required autoComplete="organization" /></label>
       <label className="input"><span>¿Qué ofrece tu empresa?</span><textarea name="description" minLength={12} maxLength={600} required placeholder="Describe en una frase tus servicios o productos." /></label>
       <label className="input"><span>Sitio web (opcional)</span><input type="url" name="website" maxLength={300} placeholder="https://tuempresa.com" /></label>

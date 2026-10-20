@@ -262,6 +262,14 @@ button:focus-visible,a:focus-visible { outline:2px solid var(--gold); outline-of
   background:radial-gradient(circle at 82% 8%,rgba(217,175,67,.09),transparent 25%),linear-gradient(135deg,#06101e,#0c1727);
 }
 .short-onboarding-card { width:min(720px,100%) }
+.onboarding-choices { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:24px }
+.onboarding-choice { display:flex; min-width:0; flex-direction:column; gap:6px; padding:17px 20px; border:1px solid var(--line); border-radius:13px; background:var(--panel); color:var(--paper); text-decoration:none }
+.onboarding-choice.selected { border-color:var(--gold); box-shadow:inset 3px 0 var(--gold) }
+.onboarding-choice:not(.selected):hover,.onboarding-choice:not(.selected):focus-visible { border-color:var(--gold); background:#122138 }
+.onboarding-choice span { color:var(--gold); font-size:10px; font-weight:800; letter-spacing:.12em }
+.onboarding-choice strong { font-size:17px }
+.onboarding-choice small { color:var(--muted); font-size:12px; line-height:1.4 }
+.short-full-link { display:inline-block; margin-top:4px; color:var(--gold); font-size:13px; font-weight:700 }
 .short-onboarding-form { display:grid; gap:17px; margin-top:24px }
 .short-onboarding-form .grid { margin:0 }
 .short-products { display:flex; flex-wrap:wrap; gap:18px; padding:16px; border:1px solid var(--line); border-radius:12px }
@@ -273,4 +281,4 @@ button:focus-visible,a:focus-visible { outline:2px solid var(--gold); outline-of
 .short-invite-panel form,.short-invite-result { display:flex; align-items:end; gap:12px; flex-wrap:wrap }
 .short-invite-panel .input { flex:1 1 260px; min-width:0 }
 .short-invite-result input { width:100% }
-@media(max-width:570px) { .short-invite-panel form>button,.short-invite-result>button { width:100% } }
+@media(max-width:570px) { .onboarding-choices { grid-template-columns:1fr } .short-invite-panel form>button,.short-invite-result>button { width:100% } }

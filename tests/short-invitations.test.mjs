@@ -5,6 +5,7 @@ import ts from "typescript";
 
 async function fixture() {
   const rows = new Map();
+  const limits = new Map();
   const DB = {
     prepare(sql) {
       let args = [];
@@ -12,14 +13,31 @@ async function fixture() {
         bind(...values) { args = values; return this; },
         async first() {
           if (sql.includes("WHERE token_hash = ?")) return rows.get(args[0]) || null;
+          if (sql.includes("submitted_at IS NOT NULL")) return [...rows.values()].find((row) =>
+            row.email === args[0] && row.submitted_at && !row.activated_at) || null;
           if (sql.includes("WHERE email = ?")) return [...rows.values()].find((row) =>
             row.email === args[0] && !row.activated_at && row.expires_at > args[1]) || null;
           return null;
         },
         async run() {
+          if (sql.includes("INSERT INTO public_short_signup_limits")) {
+            const previous = limits.get(args[0]);
+            if (previous?.windowStart === args[1] && previous.attempts >= args[2]) return { meta: { changes: 0 } };
+            limits.set(args[0], { windowStart: args[1], attempts: previous?.windowStart === args[1] ? previous.attempts + 1 : 1 });
+            return { meta: { changes: 1 } };
+          }
           if (sql.includes("INSERT INTO")) {
+            if (args.length === 6 && [...rows.values()].some((row) => row.email === args[1] && row.submitted_at && !row.activated_at)) {
+              throw new Error("UNIQUE constraint failed");
+            }
             rows.set(args[0], { token_hash: args[0], email: args[1], expires_at: args[2],
-              created_at: args[3], submitted_at: null, activated_at: null, payload_json: null, onboarding_id: null });
+              created_at: args[3], submitted_at: args[4] || null, activated_at: null, payload_json: args[5] || null, onboarding_id: null });
+            return { meta: { changes: 1 } };
+          }
+          if (sql.includes("SET expires_at")) {
+            const row = rows.get(args[2]);
+            if (!row || row.activated_at || row.expires_at > args[3]) return { meta: { changes: 0 } };
+            row.expires_at = args[0]; row.submitted_at = args[1];
             return { meta: { changes: 1 } };
           }
           const row = rows.get(args[2]);
@@ -39,7 +57,7 @@ async function fixture() {
   globalThis.__shortInviteEnv = { DB };
   const invitationApi = await import(`data:text/javascript,${encodeURIComponent(code)}#${Math.random()}`);
   delete globalThis.__shortInviteEnv;
-  return { invitationApi, rows };
+  return { invitationApi, rows, limits };
 }
 
 const signup = { firstName: "Ana", lastName: "Pérez", email: "ana@example.test", companyName: "Productora A",
@@ -67,4 +85,41 @@ test("completed invitation cannot be reused", async () => {
   assert.equal(await invitationApi.findShortInvitation(token), null);
   assert.equal([...rows.values()][0].onboarding_id, "ONB-12345678");
   await assert.rejects(invitationApi.claimShortInvitation(token, signup), /no es válida/);
+});
+
+test("public signup is email-bound, idempotent, and does not resend a pending submission", async () => {
+  const { invitationApi, rows } = await fixture();
+  const first = await invitationApi.createPublicShortSignup(signup);
+  assert.equal(first.shouldSend, true);
+  assert.equal(first.record.email, signup.email);
+  assert.equal(rows.size, 1);
+  const repeated = await invitationApi.createPublicShortSignup(signup);
+  assert.equal(repeated.shouldSend, false);
+  assert.equal(rows.size, 1);
+  await assert.rejects(invitationApi.createPublicShortSignup({ ...signup, companyName: "Otra" }), /solicitud pendiente/);
+  rows.get(first.record.token_hash).expires_at = new Date(Date.now() - 1000).toISOString();
+  const renewed = await invitationApi.createPublicShortSignup(signup);
+  assert.equal(renewed.shouldSend, true);
+  assert.equal(rows.size, 1);
+  assert.equal((await invitationApi.pendingShortSignup(signup.email))?.token_hash, first.record.token_hash);
+  await invitationApi.finishShortSignup(first.record.token_hash, "ONB-PUBLIC");
+  assert.equal(await invitationApi.pendingShortSignup(signup.email), null);
+});
+
+test("public signup limits requests without retaining the raw visitor IP", async () => {
+  const { invitationApi, limits } = await fixture();
+  const original = process.env.FOCUS_PORTAL_TOKEN;
+  process.env.FOCUS_PORTAL_TOKEN = "test-secret-not-for-production";
+  try {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      assert.equal(await invitationApi.consumePublicSignupAllowance("203.0.113.8"), true);
+    }
+    assert.equal(await invitationApi.consumePublicSignupAllowance("203.0.113.8"), false);
+    assert.equal(await invitationApi.consumePublicSignupAllowance("203.0.113.9"), true);
+    assert.equal(limits.size, 2);
+    assert.ok(![...limits.keys()].some((key) => key.includes("203.0.113")));
+  } finally {
+    if (original === undefined) delete process.env.FOCUS_PORTAL_TOKEN;
+    else process.env.FOCUS_PORTAL_TOKEN = original;
+  }
 });

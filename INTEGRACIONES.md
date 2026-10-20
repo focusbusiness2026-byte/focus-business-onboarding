@@ -17,9 +17,9 @@ El formulario no llama directamente al módulo de prospección ni duplica datos.
 
 ## Alta breve de herramientas
 
-El portal administrativo permite crear una invitación privada, vinculada a un correo y válida siete días. El cliente elige Prospección, Radar o ambos en `/alta-herramientas`, con web opcional. El enlace de acceso confirma el correo antes de crear una ficha `Breve` en `Onboarding` y asignar 50 usos únicamente a cada producto elegido. Un reenvío conserva el mismo ID y los saldos existentes. La preparación posterior del perfil es provisional y no inicia búsquedas ni automatizaciones.
+La portada ofrece el formulario completo original y un alta básica pública en `/alta-herramientas`. También se conserva la posibilidad de crear desde el portal administrativo una invitación privada vinculada a un correo, válida siete días. El cliente elige Prospección, Radar o ambos, con web opcional. Un enlace por correo confirma su identidad antes de crear una ficha `Breve` en `Onboarding` y asignar 50 usos únicamente a cada producto elegido. Un reenvío no duplica la ficha ni restablece saldos; el alta pública limita solicitudes por origen y no reenvía automáticamente un correo de resultado incierto. La preparación posterior del perfil es provisional y no inicia búsquedas ni automatizaciones.
 
-La invitación de un solo uso se guarda en D1 mediante la migración `0004`; los datos operativos, permisos y cuotas siguen en Google Sheets. Prospección revisa las fichas breves pendientes en segundo plano aunque no esté configurada la notificación inmediata `PROSPECTION_TRIGGER_URL`.
+La invitación de un solo uso se guarda en D1 mediante la migración `0004`. La migración `0005` añade la exclusión de altas pendientes duplicadas y un contador temporal por origen para el formulario público; usa un hash, no la IP sin procesar. Los datos operativos, permisos y cuotas siguen en Google Sheets. Prospección revisa las fichas breves pendientes en segundo plano aunque no esté configurada la notificación inmediata `PROSPECTION_TRIGGER_URL`.
 
 ## Variables requeridas
 

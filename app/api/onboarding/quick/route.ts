@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createMagicLogin, invalidateMagicLogin } from "@/lib/portal-auth";
-import { claimShortInvitation, findShortInvitation, type ShortSignup } from "@/lib/short-invitations";
+import { claimShortInvitation, consumePublicSignupAllowance, createPublicShortSignup, findShortInvitation, type ShortSignup } from "@/lib/short-invitations";
 import { activeSheetAccess } from "@/lib/sheet-access";
 import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
 
@@ -9,6 +9,7 @@ const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function GET(request: Request) {
   const invite = new URL(request.url).searchParams.get("invite") || "";
+  if (!invite) return NextResponse.json({ ok: true, public: true }, { headers: noStore });
   const record = await findShortInvitation(invite);
   if (!record) return NextResponse.json({ ok: false, error: "La invitación no existe o ha caducado." }, { status: 404, headers: noStore });
   return NextResponse.json({ ok: true, email: record.email, submitted: Boolean(record.submitted_at) }, { headers: noStore });
@@ -64,18 +65,42 @@ async function sendSignupLink(email: string, magicToken: string) {
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json() as Record<string, unknown>;
+    const origin = request.headers.get("Origin");
+    if (origin && origin !== new URL(request.url).origin) {
+      return NextResponse.json({ ok: false, error: "Origen no permitido." }, { status: 403, headers: noStore });
+    }
+    if (!request.headers.get("Content-Type")?.toLowerCase().startsWith("application/json")) {
+      return NextResponse.json({ ok: false, error: "Envía los datos en formato JSON." }, { status: 415, headers: noStore });
+    }
+    const raw = await request.text();
+    if (raw.length > 12_000) {
+      return NextResponse.json({ ok: false, error: "La solicitud es demasiado grande." }, { status: 413, headers: noStore });
+    }
+    const body = JSON.parse(raw) as Record<string, unknown>;
     const invite = String(body.invite || "");
     const signup = parseSignup(body);
-    const record = await findShortInvitation(invite);
-    if (!record || record.email !== signup.email) {
-      return NextResponse.json({ ok: false, error: "La invitación no corresponde a este correo." }, { status: 403, headers: noStore });
+    if (invite) {
+      const record = await findShortInvitation(invite);
+      if (!record || record.email !== signup.email) {
+        return NextResponse.json({ ok: false, error: "La invitación no corresponde a este correo." }, { status: 403, headers: noStore });
+      }
+    } else if (!await consumePublicSignupAllowance(request.headers.get("CF-Connecting-IP") || "")) {
+      return NextResponse.json({ ok: false, error: "Demasiadas solicitudes. Inténtalo más tarde." }, { status: 429, headers: noStore });
     }
     const existing = await activeSheetAccess(signup.email);
     if (existing) {
       return NextResponse.json({ ok: false, error: "Este correo ya tiene acceso. Entra desde el centro de acceso o contacta con soporte." }, { status: 409, headers: noStore });
     }
-    await claimShortInvitation(invite, signup);
+    if (invite) {
+      await claimShortInvitation(invite, signup);
+    } else {
+      const pending = await createPublicShortSignup(signup);
+      if (!pending.shouldSend) {
+        return NextResponse.json({ ok: true, saved: true, linkSent: false,
+          message: "Esta solicitud ya está guardada. Revisa el correo enviado; si no llegó, contacta con soporte. No necesitas enviarla otra vez." },
+        { status: 202, headers: noStore });
+      }
+    }
     const destination = signup.prospection ? "https://prospeccion.focusbusinesslab.es/portal" : "https://radar.focusbusinesslab.es/";
     const magic = await createMagicLogin({ email: signup.email, role: "Cliente", returnTo: destination });
     const issuedToken = magic.magicToken;

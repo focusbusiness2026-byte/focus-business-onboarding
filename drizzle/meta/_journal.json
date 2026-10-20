@@ -36,6 +36,13 @@
       "when": 1792503126336,
       "tag": "0004_material_wonder_man",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792509992858,
+      "tag": "0005_luxuriant_colossus",
+      "breakpoints": true
     }
   ]
 }

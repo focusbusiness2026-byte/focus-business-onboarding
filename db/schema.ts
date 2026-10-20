@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
 
 export const onboardingSubmissions = sqliteTable(
   "onboarding_submissions",
@@ -75,8 +76,18 @@ export const shortInvitations = sqliteTable(
     payloadJson: text("payload_json"),
     onboardingId: text("onboarding_id"),
   },
-  (table) => [index("idx_short_invitations_email").on(table.email)],
+  (table) => [
+    index("idx_short_invitations_email").on(table.email),
+    uniqueIndex("idx_short_invitations_pending_email").on(table.email)
+      .where(sql`${table.submittedAt} IS NOT NULL AND ${table.activatedAt} IS NULL`),
+  ],
 );
+
+export const publicShortSignupLimits = sqliteTable("public_short_signup_limits", {
+  visitorHash: text("visitor_hash").primaryKey(),
+  windowStart: text("window_start").notNull(),
+  attempts: integer("attempts").notNull(),
+});
 
 export const radarGuideHistory = sqliteTable(
   "radar_guide_history",
