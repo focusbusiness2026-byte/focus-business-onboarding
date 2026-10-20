@@ -71,6 +71,9 @@ export default function PortalClient() {
   const [deletingId, setDeletingId] = useState("");
   const [copiedField, setCopiedField] = useState("");
   const [error, setError] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteUrl, setInviteUrl] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
 
   const records = data?.records ?? [];
   const selectedGroups = selected ? detailGroups.map((group) => ({
@@ -143,6 +146,26 @@ export default function PortalClient() {
     }
   }
 
+  async function createInvitation(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setInviteBusy(true);
+    setInviteUrl("");
+    setError("");
+    try {
+      const response = await fetch("/api/admin/short-invitations", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: inviteEmail }),
+      });
+      const result = await response.json() as { ok?: boolean; url?: string; error?: string };
+      if (!response.ok || !result.ok || !result.url) throw new Error(result.error || "No se pudo crear la invitación.");
+      setInviteUrl(result.url);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No se pudo crear la invitación.");
+    } finally {
+      setInviteBusy(false);
+    }
+  }
+
   if (!data?.ok) {
     return (
       <main className="access">
@@ -172,6 +195,12 @@ export default function PortalClient() {
         <p className="eyebrow">PORTAL DE CONFIGURACIÓN</p>
         <h1>Empresas registradas</h1>
         <p className="intro">Consulta la información recibida y abre un registro para ver todos sus datos.</p>
+        <section className="short-invite-panel"><p className="eyebrow">ALTA BREVE</p><h2>Invitar a Prospección o Radar</h2>
+          <p>El enlace queda asociado al correo y caduca en 7 días. Compártelo manualmente; no se envía ningún mensaje desde aquí.</p>
+          <form onSubmit={createInvitation}><label className="input"><span>Correo del cliente</span><input type="email" value={inviteEmail} onChange={(event) => setInviteEmail(event.target.value)} required /></label>
+            <button className="secondary" type="submit" disabled={inviteBusy}>{inviteBusy ? "Creando…" : "Crear invitación"}</button></form>
+          {inviteUrl && <div className="short-invite-result"><label className="input"><span>Enlace privado</span><input value={inviteUrl} readOnly onFocus={(event) => event.currentTarget.select()} /></label><button className="secondary" type="button" onClick={() => void navigator.clipboard.writeText(inviteUrl)}>Copiar enlace</button></div>}
+        </section>
         <div className="portal-stats">
           <div><b>{records.length}</b><span>Registros recibidos</span></div>
           <div><b>{records.filter((row) => row["Estado"] === "Listo para GHL").length}</b><span>Listos para GoHighLevel</span></div>

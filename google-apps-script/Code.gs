@@ -33,6 +33,7 @@ const ONBOARDING_HEADERS = [
   "Incorporar WhatsApp", "Estado WhatsApp Business", "Número WhatsApp", "Zona número EE. UU.", "Número visible WhatsApp", "Confirmación costes WhatsApp",
   "Uso de llamadas", "Número para llamadas", "Número visible llamadas", "Grabación de llamadas", "Confirmación normativa grabación",
   "Configuración subdominio", "Uso del subdominio", "Subdominio preferido", "Subdominio alternativo", "Propiedad del dominio", "Estado acceso DNS", "Verificación subdominio", "Dominio opción 1", "Estado dominio 1", "Dominio opción 2", "Estado dominio 2", "Dominio opción 3", "Estado dominio 3", "Dominio existente", "Acceso dominio existente", "Reunión dominio existente",
+  "Modalidad alta", "ID invitación", "Estado perfil", "Origen perfil", "Fecha perfil",
 ];
 
 function doPost(e) {
@@ -40,11 +41,13 @@ function doPost(e) {
     const data = JSON.parse(e.postData.contents || "{}");
     if (!isPortalToken(data._focusToken)) return json({ ok: false, error: "No autorizado" });
     if (data.action === "radarQuota") return radarQuota(data);
+    if (data.action === "activateShortSignup") return activateShortSignup(data);
     if (data.action === "delete") {
       const user = findActiveUser(data.email || "");
       if (!user) return json({ ok: false, error: "Acceso revocado o no autorizado" });
       return deleteRecord(data.id, user);
     }
+    if (data.action === "sendSignupLogin") return sendMagicLogin(data.email, data.magicUrl, false);
     if (data.action === "sendMagicLogin") {
       return sendMagicLogin(data.email, data.magicUrl);
     }
@@ -159,9 +162,10 @@ function saveOnboardingSubmission(data) {
   }
 }
 
-function sendMagicLogin(email, magicUrl) {
+function sendMagicLogin(email, magicUrl, requireActive) {
   const normalized = String(email || "").trim().toLowerCase();
-  if (!findActiveUser(normalized)) return json({ ok: false, error: "El correo no está activo en Accesos" });
+  if (requireActive !== false && !findActiveUser(normalized)) return json({ ok: false, error: "El correo no está activo en Accesos" });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return json({ ok: false, error: "Correo no válido" });
   if (!/^https:\/\/onboarding\.focusbusinesslab\.es\/magic-login\?token=[A-Za-z0-9_-]+$/.test(String(magicUrl || ""))) {
     return json({ ok: false, error: "Enlace de acceso no permitido" });
   }
@@ -282,6 +286,108 @@ function ensureClientAccess(email) {
     sheet.getRange(newRow, quotaStatusIndex + 1).setFormula(`=IF(${columnLetter(roleIndex + 1)}${newRow}="Administrador";"Ilimitado";IF(${columnLetter(availableIndex + 1)}${newRow}=0;"Agotado";IF(${columnLetter(percentageIndex + 1)}${newRow}<=20%;"Crítico";IF(${columnLetter(percentageIndex + 1)}${newRow}<=50%;"Atención";"Disponible"))))`);
   }
   return true;
+}
+
+function activateShortSignup(data) {
+  const signup = data.signup || {};
+  const email = normalizedOnboardingEmail(signup.email);
+  const company = normalizedOnboardingCompany(signup.companyName);
+  const signupId = String(data.signupId || "").trim();
+  const prospection = signup.prospection === true;
+  const radar = signup.radar === true;
+  if (!/^[A-Za-z0-9_-]{40,64}$/.test(signupId) || !company || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+      || !String(signup.firstName || "").trim() || !String(signup.lastName || "").trim()
+      || String(signup.description || "").trim().length < 12 || (!prospection && !radar) || signup.terms !== true) {
+    return json({ ok: false, code: "invalid", error: "Alta breve incompleta" });
+  }
+  const website = String(signup.website || "").trim();
+  if (website && !/^https?:\/\/[^\s/@]+(?:[/:?#]|$)/i.test(website)) return json({ ok: false, code: "invalid", error: "Web no válida" });
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return json({ ok: false, code: "busy", error: "El alta está ocupada" });
+  try {
+    const book = SpreadsheetApp.openById(ONBOARDING_SHEET_ID);
+    const sheet = onboardingSheet();
+    const accessSheet = book.getSheetByName(ACCESS_TAB);
+    const radarSheet = radar ? book.getSheetByName(RADAR_QUOTA_TAB) : null;
+    if (!accessSheet || (radar && !radarSheet)) throw new Error("Las pestañas operativas no están configuradas");
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getDisplayValues()[0];
+    const rows = sheet.getDataRange().getValues();
+    const signupColumn = headers.indexOf("ID invitación");
+    const idColumn = headers.indexOf("ID registro");
+    const emailColumn = headers.indexOf("Email responsable");
+    const companyColumn = headers.indexOf("Empresa");
+    const existingRowIndex = rows.findIndex((row, index) => index > 0 && String(row[signupColumn] || "") === signupId);
+    let id = existingRowIndex > 0 ? String(rows[existingRowIndex][idColumn] || "") : "";
+    if (!id && rows.some((row, index) => index > 0 && normalizedOnboardingEmail(row[emailColumn]) === email)) {
+      throw onboardingIdentityReview("Este correo ya corresponde a una ficha existente");
+    }
+    if (existingRowIndex > 0 && (normalizedOnboardingEmail(rows[existingRowIndex][emailColumn]) !== email
+        || normalizedOnboardingCompany(rows[existingRowIndex][companyColumn]) !== company)) {
+      throw onboardingIdentityReview("La invitación ya está vinculada a otra ficha");
+    }
+    const accessRows = accessSheet.getDataRange().getValues();
+    const accessHeaders = accessRows[0].map((value) => String(value).trim());
+    const index = (header) => accessHeaders.indexOf(header);
+    for (const required of ["Correo autorizado", "Rol", "Estado", "Raspados asignados", "Raspados usados", PROSPECTION_ACCESS_HEADER, RADAR_ACCESS_HEADER]) {
+      if (index(required) < 0) throw new Error(`Falta la columna ${required} en Accesos`);
+    }
+    const accessRowIndex = accessRows.findIndex((row, offset) => offset > 0 && normalizedOnboardingEmail(row[index("Correo autorizado")]) === email);
+    if (!id && accessRowIndex > 0) throw onboardingIdentityReview("Este correo ya corresponde a una cuenta existente");
+    if (!id) {
+      id = `ONB-${Utilities.getUuid().slice(0, 8).toUpperCase()}`;
+      const values = ONBOARDING_HEADERS.map((header) => safeCellValue({
+        "ID registro": id, "Fecha envío": new Date(), "Estado": "Nuevo", "Empresa": signup.companyName,
+        "Web": website, "Actividad": signup.description, "Descripción": signup.description,
+        "Servicio prioritario": signup.description, "Servicios": signup.description,
+        "Público": "Empresa privada B2B", "Sectores": "Multisectorial", "Mercados": "España",
+        "Países objetivo": "España", "Tipos de cliente objetivo": "Empresa privada B2B",
+        "Perfil ideal detallado": "Empresas B2B en España; criterios provisionales y editables",
+        "Responsable": `${signup.firstName} ${signup.lastName}`, "Email responsable": email,
+        "Datos correctos": true, "Autorización": true, "Preparación prospección": "Borrador provisional; análisis pendiente",
+        "Modalidad alta": "Breve", "ID invitación": signupId, "Estado perfil": "Pendiente",
+        "Origen perfil": "Declarado por cliente; valores genéricos", "Fecha perfil": new Date(),
+      }[header] || ""));
+      sheet.appendRow(values);
+    }
+    if (accessRowIndex > 0) {
+      const current = accessRows[accessRowIndex];
+      if (String(current[index("Rol")]).trim() !== "Cliente"
+          || String(current[index("Estado")]).trim() !== "Activo"
+          || Number(current[index("Raspados asignados")]) !== (prospection ? 50 : 0)
+          || String(current[index(PROSPECTION_ACCESS_HEADER)]).trim() !== (prospection ? ACCESS_ALLOWED : ACCESS_BLOCKED)
+          || String(current[index(RADAR_ACCESS_HEADER)]).trim() !== (radar ? ACCESS_ALLOWED : ACCESS_BLOCKED)) {
+        throw onboardingIdentityReview("Los permisos existentes requieren revisión; no se modificaron saldos");
+      }
+    } else {
+      const rowNumber = accessSheet.getLastRow() + 1;
+      const row = accessHeaders.map((header) => {
+        if (header === "Correo autorizado") return email;
+        if (header === "Rol") return "Cliente";
+        if (header === "Estado") return "Activo";
+        if (header === "Raspados asignados") return prospection ? 50 : 0;
+        if (header === "Raspados usados") return 0;
+        if (header === "Raspados disponibles") return `=MAX(${columnLetter(index("Raspados asignados") + 1)}${rowNumber}-${columnLetter(index("Raspados usados") + 1)}${rowNumber};0)`;
+        if (header === "% disponible") return `=IFERROR(${columnLetter(index("Raspados disponibles") + 1)}${rowNumber}/${columnLetter(index("Raspados asignados") + 1)}${rowNumber};0)`;
+        if (header === "Estado cuota") return `=IF(${columnLetter(index("Raspados disponibles") + 1)}${rowNumber}=0;"Agotado";"Disponible")`;
+        if (header === QUOTA_RENEWAL_HEADER || header === "Última actualización") return new Date();
+        if (header === PROSPECTION_ACCESS_HEADER) return prospection ? ACCESS_ALLOWED : ACCESS_BLOCKED;
+        if (header === RADAR_ACCESS_HEADER) return radar ? ACCESS_ALLOWED : ACCESS_BLOCKED;
+        return "";
+      });
+      accessSheet.appendRow(row);
+    }
+    if (radar) {
+      const quotas = radarSheet.getDataRange().getValues();
+      const matching = quotas.findIndex((row, offset) => offset > 0 && String(row[0]).trim() === id);
+      if (matching < 0) {
+        const quotaRow = radarSheet.getLastRow() + 1;
+        radarSheet.getRange(quotaRow, 1, 1, 6).setValues([[id, 50, 0, `=MAX(0;B${quotaRow}-C${quotaRow})`, new Date(), ""]]);
+      }
+    }
+    return json({ ok: true, id, accessReady: true, prospection, radar });
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function syncExistingClientAccessFromOnboarding() {
@@ -449,7 +555,11 @@ function ensureOnboardingHeaders(sheet) {
   if (ONBOARDING_HEADERS.every((header, index) => current[index] === header)) return;
   if (current.every((header, index) => ONBOARDING_HEADERS[index] === header)) {
     const missing = ONBOARDING_HEADERS.slice(current.length);
-    if (missing.length) sheet.getRange(1, current.length + 1, 1, missing.length).setValues([missing]);
+    if (missing.length) {
+      const additionalColumns = ONBOARDING_HEADERS.length - sheet.getMaxColumns();
+      if (additionalColumns > 0) sheet.insertColumnsAfter(sheet.getMaxColumns(), additionalColumns);
+      sheet.getRange(1, current.length + 1, 1, missing.length).setValues([missing]);
+    }
     return;
   }
   if (current.some((header) => !header || header === "#REF!") || new Set(current).size !== current.length) {

@@ -15,6 +15,12 @@ Google Sheets es la única fuente de verdad del flujo. GoHighLevel no recibe dat
 
 El formulario no llama directamente al módulo de prospección ni duplica datos. La integración se realiza desde la lectura de la misma hoja. Si una fila no tiene una web pública válida o la autorización confirmada, Prospección debe mostrarla como bloqueada y no inventar un valor alternativo.
 
+## Alta breve de herramientas
+
+El portal administrativo permite crear una invitación privada, vinculada a un correo y válida siete días. El cliente elige Prospección, Radar o ambos en `/alta-herramientas`, con web opcional. El enlace de acceso confirma el correo antes de crear una ficha `Breve` en `Onboarding` y asignar 50 usos únicamente a cada producto elegido. Un reenvío conserva el mismo ID y los saldos existentes. La preparación posterior del perfil es provisional y no inicia búsquedas ni automatizaciones.
+
+La invitación de un solo uso se guarda en D1 mediante la migración `0004`; los datos operativos, permisos y cuotas siguen en Google Sheets. Prospección revisa las fichas breves pendientes en segundo plano aunque no esté configurada la notificación inmediata `PROSPECTION_TRIGGER_URL`.
+
 ## Variables requeridas
 
 - `GOOGLE_SHEETS_WEBHOOK_URL`: URL `/exec` de la aplicación web de Apps Script.
@@ -33,10 +39,10 @@ El archivo fuente es `google-apps-script/Code.gs`. Debe publicarse como aplicaci
 
 - Ejecutar como el propietario de la hoja.
 - Permitir acceso a cualquier usuario; el token protege las lecturas y escrituras.
-- Mantener en la fila 1 de `Onboarding` los 138 encabezados definidos por `ONBOARDING_HEADERS`.
+- Mantener en la fila 1 de `Onboarding` los 143 encabezados definidos por `ONBOARDING_HEADERS`.
 - Antes del primer envío de enlaces de acceso, ejecutar una vez `authorizePortalEmailSending()` desde el editor con la cuenta propietaria y aceptar el permiso oficial de Google para enviar correo. La función solo consulta la cuota disponible y no envía mensajes.
 
-Los 42 encabezados nuevos se añaden después de los 96 existentes para preservar las filas actuales. Incluyen campaña, landing/VSL, accesos de Meta, regiones, WhatsApp, llamadas y dominio/subdominio. `ensureOnboardingHeaders` añade automáticamente solo las columnas finales que falten. Si detecta otro orden, crea una pestaña de respaldo antes de reorganizar por nombre. También puede ejecutarse manualmente `migrateOnboardingHeaders()` después de revisar la hoja.
+Los 42 encabezados del formulario completo se añaden después de los 96 existentes. El alta breve agrega cinco encabezados finales sin desplazar los anteriores: `Modalidad alta`, `ID invitación`, `Estado perfil`, `Origen perfil` y `Fecha perfil`. `ensureOnboardingHeaders` amplía la cuadrícula y añade solo las columnas finales que falten. Si detecta otro orden, crea una pestaña de respaldo antes de reorganizar por nombre. También puede ejecutarse manualmente `migrateOnboardingHeaders()` después de revisar la hoja.
 
 ## Acceso al portal
 
@@ -45,6 +51,6 @@ Para conceder o revocar acceso, añadir o actualizar un correo en la pestaña `A
 ## Activación pendiente de autorización
 
 1. Revisar y publicar la nueva versión de `google-apps-script/Code.gs`.
-2. Ejecutar `migrateOnboardingHeaders()` y comprobar 138 columnas sin borrar la pestaña de respaldo.
+2. Ejecutar `migrateOnboardingHeaders()` y comprobar 143 columnas sin borrar la pestaña de respaldo.
 3. Publicar el formulario con `GOOGLE_SHEETS_WEBHOOK_URL`, `GOOGLE_SHEETS_PORTAL_URL`, `FOCUS_PORTAL_TOKEN`, `PROSPECTION_TRIGGER_URL`, `PROSPECTION_TRIGGER_TOKEN`, `VIRAL_RADAR_SYNC_URL` y `VIRAL_RADAR_SYNC_TOKEN` como secretos del servidor.
 4. No introducir contraseñas, claves API ni tokens en el formulario o la hoja.

@@ -63,6 +63,21 @@ export const portalAccessPermissions = sqliteTable("portal_access_permissions", 
   updatedAt: text("updated_at").notNull(),
 });
 
+export const shortInvitations = sqliteTable(
+  "short_invitations",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    email: text("email").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+    submittedAt: text("submitted_at"),
+    activatedAt: text("activated_at"),
+    payloadJson: text("payload_json"),
+    onboardingId: text("onboarding_id"),
+  },
+  (table) => [index("idx_short_invitations_email").on(table.email)],
+);
+
 export const radarGuideHistory = sqliteTable(
   "radar_guide_history",
   {

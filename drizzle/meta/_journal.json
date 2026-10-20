@@ -29,6 +29,13 @@
       "when": 1789758802575,
       "tag": "0003_stormy_the_order",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792503126336,
+      "tag": "0004_material_wonder_man",
+      "breakpoints": true
     }
   ]
 }
