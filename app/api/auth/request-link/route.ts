@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createMagicLogin, invalidateMagicLogin, safePortalDestination } from "@/lib/portal-auth";
 import { activeSheetAccess } from "@/lib/sheet-access";
 import { fetchAppsScriptJson } from "@/lib/apps-script-fetch";
+import { pendingShortSignup } from "@/lib/short-invitations";
 
 class MagicLinkDeliveryUnconfirmedError extends Error {
   constructor() {
@@ -10,7 +11,7 @@ class MagicLinkDeliveryUnconfirmedError extends Error {
   }
 }
 
-async function sendMagicLink(email: string, magicToken: string) {
+async function sendMagicLink(email: string, magicToken: string, pendingSignup = false) {
   const url = process.env.GOOGLE_SHEETS_WEBHOOK_URL;
   const token = process.env.FOCUS_PORTAL_TOKEN;
   if (!url || !token) throw new Error("El envío de correo no está configurado.");
@@ -22,7 +23,7 @@ async function sendMagicLink(email: string, magicToken: string) {
     delivery = await fetchAppsScriptJson<{ ok?: boolean; error?: string }>(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "sendMagicLogin", email, magicUrl: magicUrl.toString(), _focusToken: token }),
+      body: JSON.stringify({ action: pendingSignup ? "sendSignupLogin" : "sendMagicLogin", email, magicUrl: magicUrl.toString(), _focusToken: token }),
       signal: AbortSignal.timeout(25_000),
     });
   } catch {
@@ -46,23 +47,34 @@ export async function POST(request: Request) {
     stage = "validate-sheet-access";
     const destination = safePortalDestination(body.returnTo);
     const access = await activeSheetAccess(email);
+    const pending = access ? null : await pendingShortSignup(email);
+    let pendingProducts: { prospection?: boolean; radar?: boolean } | null = null;
+    if (pending?.payload_json) {
+      try {
+        pendingProducts = JSON.parse(pending.payload_json) as { prospection?: boolean; radar?: boolean };
+      } catch {
+        console.warn("portal_pending_signup_invalid_payload");
+      }
+    }
+    const wantsRadar = destination.startsWith("https://radar.focusbusinesslab.es");
     const destinationAllowed = access && (
-      destination.startsWith("https://radar.focusbusinesslab.es") ? access.radar : access.prospection
+      wantsRadar ? access.radar : access.prospection
     );
-    if (destination.startsWith("https://radar.focusbusinesslab.es") && access && !access.radar) {
+    const pendingDestinationAllowed = !access && pendingProducts && (wantsRadar ? pendingProducts.radar : pendingProducts.prospection);
+    if (wantsRadar && access && !access.radar) {
       return NextResponse.json({
         ok: true,
         availability: "updating",
         message: "Focus Viral Radar está en actualización para esta cuenta. No se envió un enlace de Radar.",
       });
     }
-    if (access && destinationAllowed) {
+    if (destinationAllowed || pendingDestinationAllowed) {
       stage = "create-one-time-link";
-      const magic = await createMagicLogin({ email, role: access.role, returnTo: destination });
+      const magic = await createMagicLogin({ email, role: access?.role || "Cliente", returnTo: destination });
       if (magic.magicToken) {
         try {
           stage = "send-access-email";
-          await sendMagicLink(email, magic.magicToken);
+          await sendMagicLink(email, magic.magicToken, Boolean(pendingDestinationAllowed));
         } catch (error) {
           if (error instanceof MagicLinkDeliveryUnconfirmedError) {
             console.warn("portal_access_delivery_unconfirmed", { stage });
@@ -75,7 +87,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({
       ok: true,
-      message: "Si el correo está activo, recibirás un enlace de acceso válido durante 15 minutos.",
+      message: "Si el correo tiene acceso o una solicitud pendiente válida, recibirás un enlace de 15 minutos.",
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : "Error desconocido";
