@@ -89,6 +89,14 @@ export const publicShortSignupLimits = sqliteTable("public_short_signup_limits",
   attempts: integer("attempts").notNull(),
 });
 
+export const sandboxRuntimeState = sqliteTable("sandbox_runtime_state", {
+  bucket: text("bucket").primaryKey(),
+  value: text("value").notNull(),
+  sha256: text("sha256").notNull(),
+  revision: integer("revision").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 export const radarGuideHistory = sqliteTable(
   "radar_guide_history",
   {

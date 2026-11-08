@@ -2,9 +2,12 @@
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 import { sandboxApi } from "./sandbox";
+import { sandboxPrivate } from "./sandbox-private";
 
 interface Env {
   FOCUS_SANDBOX?: string;
+  SANDBOX_AUTH_SECRET?: string;
+  SANDBOX_OWNER_EMAIL?: string;
   ASSETS: Fetcher;
   DB: D1Database;
   IMAGES: {
@@ -30,6 +33,10 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if(env.FOCUS_SANDBOX === "1" && (url.pathname === "/sandbox-access" || url.pathname.startsWith("/_sandbox_state/"))) {
+      return sandboxPrivate(request,env);
+    }
 
     if (env.FOCUS_SANDBOX === "1" && ["/focus-business", "/logout", "/admin-access"].includes(url.pathname)) {
       return Response.redirect(new URL("/portal", request.url), 303);
