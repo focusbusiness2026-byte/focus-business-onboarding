@@ -9,8 +9,9 @@ const json = (value: unknown, status = 200) => Response.json(value, { status, he
 
 async function records(env: SandboxEnv) {
   const rows = await env.DB.prepare("SELECT id, submitted_at, status, payload_json FROM onboarding_submissions ORDER BY submitted_at DESC LIMIT 200").all<{id:string;submitted_at:string;status:string;payload_json:string}>();
-  if (rows.results.length) return rows.results.map(row => toSheetRecord({ id:row.id, submittedAt:row.submitted_at, status:row.status, payload:JSON.parse(row.payload_json) }));
-  return [1,2].map(n => toSheetRecord({ id:`SANDBOX-${n}`, submittedAt:new Date().toISOString(), status:"Pruebas", payload:{companyName:`Estudio ficticio ${n}`,contactEmail:`cliente${n}@example.test`,website:`https://estudio${n}.example.test`,activity:"Productora audiovisual",description:"Ficha ficticia para revisión visual"} }));
+  const saved = rows.results.map(row => toSheetRecord({ id:row.id, submittedAt:row.submitted_at, status:row.status, payload:JSON.parse(row.payload_json) }));
+  const samples = [1,2].map(n => toSheetRecord({ id:`SANDBOX-${n}`, submittedAt:new Date().toISOString(), status:"Pruebas", payload:{companyName:`Estudio ficticio ${n}`,contactEmail:`cliente${n}@example.test`,website:`https://estudio${n}.example.test`,activity:"Productora audiovisual",description:"Ficha ficticia para revisión visual"} }));
+  return [...samples,...saved].map(row=>({...row,"Google Sheets":"Copia aislada; sin conexión con la hoja real"}));
 }
 
 export async function sandboxApi(request: Request, env: SandboxEnv): Promise<Response> {
@@ -22,6 +23,7 @@ export async function sandboxApi(request: Request, env: SandboxEnv): Promise<Res
   if (path === "/api/portal") {
     if (request.method === "DELETE") {
       const body = await request.json() as {id?:string};
+      if (["SANDBOX-1","SANDBOX-2"].includes(String(body.id))) return json({ok:false,error:"Las dos fichas de ejemplo son fijas. Crea otra ficha ficticia para probar su eliminación."},403);
       if (!String(body.id).startsWith("SANDBOX-")) return json({ok:false,error:"Solo registros ficticios"},422);
       await env.DB.prepare("DELETE FROM onboarding_submissions WHERE id = ?").bind(body.id).run();
       return json({ok:true,id:body.id});
