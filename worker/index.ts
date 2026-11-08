@@ -1,8 +1,10 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { sandboxApi } from "./sandbox";
 
 interface Env {
+  FOCUS_SANDBOX?: string;
   ASSETS: Fetcher;
   DB: D1Database;
   IMAGES: {
@@ -28,6 +30,14 @@ interface ExecutionContext {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    if (env.FOCUS_SANDBOX === "1" && ["/focus-business", "/logout", "/admin-access"].includes(url.pathname)) {
+      return Response.redirect(new URL("/portal", request.url), 303);
+    }
+
+    if (env.FOCUS_SANDBOX === "1" && url.pathname.startsWith("/api/")) {
+      return sandboxApi(request, env);
+    }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];

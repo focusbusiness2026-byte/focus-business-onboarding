@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SandboxNavigation from "./sandbox-navigation";
 
 export const metadata: Metadata = {
   title: "Focus Business | Onboarding de productoras",
@@ -7,4 +8,4 @@ export const metadata: Metadata = {
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg", apple: "/favicon.svg" },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="es"><body>{children}</body></html>; }
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="es"><body><SandboxNavigation />{children}</body></html>; }
