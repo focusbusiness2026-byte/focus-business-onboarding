@@ -8,5 +8,7 @@ export async function connectedReviewSubmission(input,{env=process.env,call=fetc
   const payload=input?.onboarding;
   if(!testEmail||!payload||payload.companyName!==testCompany||payload.contactEmail!==testEmail||payload.businessEmail!==testEmail||String(payload.website||"").trim())return {status:403,body:{ok:false,error:"Esta prueba solo admite la ficha técnica y el correo de Focus autorizados."}};
   const result=await call("https://onboarding.focusbusinesslab.es/api/onboarding",{method:"POST",headers:{"Content-Type":"application/json",Origin:"https://onboarding.focusbusinesslab.es"},body:JSON.stringify(input),signal:AbortSignal.timeout(90000),redirect:"error"});
-  return {status:result.status,body:await result.json()};
+  const body=await result.json();
+  console.info(JSON.stringify({event:"connected-review",status:result.status,saved:body.saved?.confirmed===true,id:body.saved?.id,deduplicated:body.saved?.deduplicated,accessLinkSent:body.account?.accessLinkSent===true}));
+  return {status:result.status,body};
 }

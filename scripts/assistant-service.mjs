@@ -15,6 +15,10 @@ export function createAssistantService({env=process.env,analyze=analyzeWebsite,h
   return createServer(async(req,res)=>{
     res.setHeader("Cache-Control","no-store");res.setHeader("X-Content-Type-Options","nosniff");
     const send=(status,body)=>{res.statusCode=status;res.setHeader("Content-Type","application/json; charset=utf-8");res.end(JSON.stringify(body));};
+    if(req.method==="GET"&&req.url==="/health"){
+      if(req.headers["user-agent"]==="focus-business-render-keepalive/2.0")console.info("onboarding-keepalive: health 200");
+      return send(200,{ok:true});
+    }
     const supplied=Buffer.from(String(req.headers.authorization||""));
     if(supplied.length!==token.length||!timingSafeEqual(supplied,token))return send(401,{ok:false});
     const url=new URL(req.url||"/","http://service");

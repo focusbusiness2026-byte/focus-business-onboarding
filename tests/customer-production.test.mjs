@@ -3,7 +3,7 @@ import test from "node:test";
 import {answerContextHelp} from "../scripts/context-help.mjs";
 import {once} from "node:events";
 import {readFile} from "node:fs/promises";
-import {customerPatch,customerError} from "../lib/customer-journey.mjs";
+import {customerPatch,customerError,onboardingDraftKey} from "../lib/customer-journey.mjs";
 import {proxyAssistant} from "../lib/assistant-proxy.mjs";
 import {createAssistantService} from "../scripts/assistant-service.mjs";
 
@@ -11,6 +11,11 @@ test("a single contact is reused without overwriting another assigned person or 
   const input={contactName:"Cliente",businessEmail:"contacto@example.com",accuracy:false,terms:false,ghlPreparationAuthorization:false};
   assert.deepEqual(customerPatch(input),{...input,contactEmail:input.businessEmail,ownerName:"Cliente"});
   assert.equal(customerPatch({...input,ownerName:"Otra persona"}).ownerName,"Otra persona");
+});
+
+test("production preserves its existing draft key and isolates the technical local review",()=>{
+  assert.equal(onboardingDraftKey("onboarding.focusbusinesslab.es"),"focus-productora-draft");
+  assert.equal(onboardingDraftKey("localhost"),"focus-productora-review-draft");
 });
 
 test("customer screens omit technical provider labels and retain explicit manual editing",async()=>{
@@ -39,6 +44,7 @@ test("production service requires authentication, limits consumption, routes act
   const service=createAssistantService({env:{ASSISTANT_SERVICE_TOKEN:token},analyze:async website=>{calls++;return{ok:true,website};},pending:async()=>({ok:true,options:[]})});
   service.listen(0,"127.0.0.1");await once(service,"listening");t.after(()=>{service.closeAllConnections();service.close();});
   const base=`http://127.0.0.1:${service.address().port}`;
+  const health=await fetch(base+"/health");assert.equal(health.status,200);assert.deepEqual(await health.json(),{ok:true});
   const send=(path,auth=token,body={website:"https://example.com"})=>fetch(base+path,{method:"POST",headers:{Authorization:`Bearer ${auth}`,"Content-Type":"application/json","X-Assistant-Client":"test"},body:JSON.stringify(body)});
   assert.equal((await send("/api/onboarding/assistant","wrong")).status,401);
   assert.equal((await send("/api/onboarding")).status,404);
