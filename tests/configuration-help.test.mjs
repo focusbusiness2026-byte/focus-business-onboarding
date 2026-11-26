@@ -4,8 +4,14 @@ import {normalizeReviewValues,normalizePatch,jsonList} from "../lib/assistant-co
 import {allowedHelpFields,answerContextHelp,generateLeadQuestions,sanitizeHelpContext} from "../scripts/context-help.mjs";
 import {extractPage} from "../scripts/onboarding-assistant.mjs";
 import {cacheLogo,getLogoAsset} from "../scripts/assistant-assets.mjs";
+import {trustedProspectionParent} from "../lib/help-bridge.mjs";
 
 const provider=result=>({env:{OPENAI_API_KEY:"test-only"},call:async(_url,init)=>{const body=JSON.parse(init.body);assert.equal(body.store,false);assert.equal(body.text.format.strict,true);return Response.json({output:[{content:[{type:"output_text",text:JSON.stringify(result)}]}]});}});
+
+test("embedded help accepts only the exact production portals and explicit local review",()=>{
+  for(const origin of ["https://prospeccion.focusbusinesslab.es","https://focus-prospeccion-fb.onrender.com","http://localhost:8133"])assert.equal(trustedProspectionParent(origin),true);
+  for(const origin of ["https://prospeccion.focusbusinesslab.es.evil.example","http://prospeccion.focusbusinesslab.es","https://untrusted.example","http://localhost:8134","null"])assert.equal(trustedProspectionParent(origin),false);
+});
 
 test("Kuro context proposes an actual activity and additional communication language without legal data",()=>{
   const values=normalizeReviewValues({activity:"Otro",description:"Creative digital studio",primaryLanguage:"Inglés",location:"Madrid y Barcelona",legalName:"Must disappear",companySocialLinks:"https://linkedin.com/company/example https://instagram.com/example"});
