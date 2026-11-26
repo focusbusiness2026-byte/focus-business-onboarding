@@ -24,6 +24,14 @@ test("help excludes permissions, consents, legal identity and account administra
   for(const name of ["terms","accuracy","legalName","teamSize","billingEmail","ghlPreparationAuthorization"])assert.ok(!fields.includes(name));
   assert.deepEqual(sanitizeHelpContext({password:"private",company:"Example",nested:{token:"private",city:"Madrid"}}),{company:"Example",nested:{city:"Madrid"}});
 });
+
+test("customer help does not confuse onboarding autosave with internal prospecting drafts",async()=>{
+  const dependencies=provider({answer:"Edita guide_answer y exporta JSON.",updates:[]});
+  const call=dependencies.call;
+  dependencies.call=async(url,init)=>{const prompt=JSON.parse(init.body).instructions;assert.match(prompt,/avance se guarda automáticamente/);assert.doesNotMatch(prompt,/versión guiada presenta preguntas/);return call(url,init);};
+  const result=await answerContextHelp({scope:"onboarding",message:"¿Puedo revisar antes de enviar?"},dependencies);
+  assert.doesNotMatch(result.answer,/guide_|JSON/);assert.match(result.answer,/automáticamente/);assert.deepEqual(result.updates,[]);
+});
 test("prospection help may propose only fields editable in the selected page",async()=>{
   const result=await answerContextHelp({scope:"prospection",message:"Barcelona",context:{contextId:"account-1",editableFields:{target_city:{type:"string"}}}},provider({answer:"Revisa la ciudad.",updates:[{field:"target_city",label:"Ciudad",value:"Barcelona"},{field:"sectors",label:"Sectores",value:'["Salud"]'},{field:"enabled",label:"Activar",value:"true"}]}));
   assert.deepEqual(result.updates.map(u=>u.field),["target_city"]);
