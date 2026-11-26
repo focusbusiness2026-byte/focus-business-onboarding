@@ -36,7 +36,9 @@ test("production proxy fails closed, blocks foreign origins, caps requests and h
   assert.equal((await proxyAssistant(request("x".repeat(60001)),{env})).status,413);
   const response=await proxyAssistant(request(),{env,call:async()=>new Response("private-value exception",{status:500})});
   assert.equal(response.status,503);assert.doesNotMatch(await response.text(),/private-value|exception/);
-  await proxyAssistant(request(),{env,call:async(url,options)=>{assert.equal(String(url),"https://private.example/api/onboarding/assistant");assert.equal(options.headers.Authorization,"Bearer private-value");return Response.json({ok:true});}});
+  await proxyAssistant(request(),{env,call:async(url,options)=>{assert.equal(typeof url,"string");assert.equal(url,"https://private.example/api/onboarding/assistant");assert.equal(options.redirect,"manual");assert.equal(options.headers.Authorization,"Bearer private-value");return Response.json({ok:true});}});
+  const redirected=await proxyAssistant(request(),{env,call:async()=>new Response(null,{status:302,headers:{Location:"https://another.example"}})});
+  assert.equal(redirected.status,503);assert.equal(redirected.headers.get("Location"),null);
 });
 
 test("production service requires authentication, limits consumption, routes actions and never writes onboarding records",async(t)=>{
