@@ -42,6 +42,11 @@ test("prospection help may propose only fields editable in the selected page",as
   const result=await answerContextHelp({scope:"prospection",message:"Barcelona",context:{contextId:"account-1",editableFields:{target_city:{type:"string"}}}},provider({answer:"Revisa la ciudad.",updates:[{field:"target_city",label:"Ciudad",value:"Barcelona"},{field:"sectors",label:"Sectores",value:'["Salud"]'},{field:"enabled",label:"Activar",value:"true"}]}));
   assert.deepEqual(result.updates.map(u=>u.field),["target_city"]);
 });
+
+test("read-only prospecting context cannot claim it prepared an editable change",async()=>{
+  const result=await answerContextHelp({scope:"prospection",message:"Cambia la ciudad objetivo a Barcelona",context:{editableFields:{}}},provider({answer:"He preparado el cambio.",updates:[]}));
+  assert.deepEqual(result.updates,[]);assert.match(result.answer,/no he preparado ningún cambio/);assert.match(result.answer,/Filtros avanzados/);
+});
 test("translation preserves optional questions and translates existing options",async()=>{
   const original=[{question:"Servicio",options:["Vídeo","Otro"],required:false}];
   const result=await generateLeadQuestions({count:1,translate:true,language:"Inglés",questions:original},provider({questions:[{question:"Service?",type:"Selección única",options:["Video","Other"],required:true}]}));
