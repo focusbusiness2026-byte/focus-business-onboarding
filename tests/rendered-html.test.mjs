@@ -63,7 +63,7 @@ test("defines detailed prospecting and safe subaccount preparation fields", asyn
   assert.match(page, /mediante OAuth cuando el proveedor lo permita/);
   assert.match(page, /Accesos opcionales para configurar Meta/);
   assert.match(page, /No compartas contraseñas/);
-  assert.match(page, /No la crean ni solicitan credenciales/);
+  assert.match(page, /no son credenciales/);
   assert.match(page, /recomendado para personalizar/i);
   assert.match(mapping, /Preparación prospección/);
   assert.match(mapping, /Lista para revisión; no creada/);
@@ -122,7 +122,7 @@ test("provides expanded official-platform setup guides", async () => {
   const phone = await readFile(new URL("../app/guias/telefonia/page.tsx", import.meta.url), "utf8");
   const whatsapp = await readFile(new URL("../app/guias/whatsapp/page.tsx", import.meta.url), "utf8");
   assert.match(page, /Ver guía completa de WhatsApp Business/);
-  assert.match(page, /más completa sea la información, mejor podremos orientar la campaña/);
+  assert.match(page, /Puedes empezar por la web y revisar la configuración propuesta/);
   assert.match(page, /Por qué no recomendamos esta opción/);
   for (const guide of [meta, facebook, ads, phone, whatsapp]) {
     assert.ok((guide.match(/title:/g) || []).length >= 8);

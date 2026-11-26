@@ -20,3 +20,7 @@ Aplicación multipaso con dos finalidades exclusivas: configurar la captación/p
 ## Para activar las integraciones
 
 Seguir `INTEGRACIONES.md` y configurar la URL de Apps Script y su token. Google Sheets es la única fuente de datos del formulario, portal y configuración de prospección. El formulario no crea subcuentas ni conecta GoHighLevel.
+
+## Revisión del candidato de producción
+
+El recorrido web-first y sus requisitos de publicación están en [PRODUCTION_CANDIDATE.md](PRODUCTION_CANDIDATE.md). La revisión local conserva los seis pasos y bloquea los envíos reales.

@@ -1,3 +1,5 @@
+import { allLeadQuestions } from "./onboarding";
+
 type FormPayload = Record<string, unknown>;
 
 const text = (value: unknown) => Array.isArray(value)
@@ -28,6 +30,7 @@ export function buildDownstreamProfile(payload: FormPayload, onboardingId: strin
     sector: activity || sectors[0] || "",
     offer,
     services,
+    service_prices: text(payload.servicePrices),
     audience,
     sectors,
     markets: countries,
@@ -39,7 +42,7 @@ export function buildDownstreamProfile(payload: FormPayload, onboardingId: strin
       destination: text(payload.campaignDestinationOther) || text(payload.campaignDestination),
       channels: list(payload.channels),
       lead_fields: list(payload.leadFields),
-      lead_questions: text(payload.additionalLeadQuestions),
+      lead_questions: allLeadQuestions(payload),
       qualification: text(payload.qualification),
     },
     landing: {
@@ -52,9 +55,12 @@ export function buildDownstreamProfile(payload: FormPayload, onboardingId: strin
       copy_brief: text(payload.landingCopyBrief),
     },
     brand: {
+      logo_url: text(payload.logoUrl),
+      colors: [text(payload.brandPrimaryColor || payload.brandColor),text(payload.brandSecondaryColor),text(payload.brandAccentColor)].filter(Boolean),
       tone: text(payload.formality),
       communication_tone: text(payload.communicationTone),
       language: text(payload.primaryLanguageOther) || text(payload.primaryLanguage),
+      additional_languages: list(payload.additionalLanguages),
       social_links: text(payload.companySocialLinks),
       portfolio: text(payload.portfolioHighlights),
     },

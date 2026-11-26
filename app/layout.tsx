@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./components/assistant.css";
 
 export const metadata: Metadata = {
   title: "Focus Business | Onboarding de productoras",

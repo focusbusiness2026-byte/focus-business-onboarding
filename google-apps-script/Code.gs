@@ -469,14 +469,14 @@ function valueFor(header, data) {
     "Servicio prioritario": () => withOther(data.mainService, data.mainServiceOther),
     "Ticket medio": () => data.ticket,
     "Modelo de precio": () => data.priceModel,
-    "Servicios": () => withOther(data.services, data.servicesOther), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => withOther(data.geographies, data.geographiesOther),
+    "Servicios": () => [withOther(data.services, data.servicesOther), servicePricesText(data.servicePrices)].filter(Boolean).join("\n"), "Público": () => asText(data.audience), "Sectores": () => withOther(data.sectors, data.sectorsOther), "Mercados": () => withOther(data.geographies, data.geographiesOther),
     "Tamaño empresa ideal": () => data.idealCompanySize, "Decisor habitual": () => data.decisionMaker, "Presupuesto mínimo": () => data.minimumBudget,
     "Objetivos": () => asText(data.objectives), "Canales": () => asText(data.channels), "Campos del lead": () => withOther(data.leadFields, data.leadFieldsOther),
     "Tiempo de respuesta": () => data.responseTime, "Asignación de leads": () => data.assignment, "Ciclo de venta": () => data.salesCycle, "Criterio de cualificación": () => data.qualification,
     "Responsable": () => data.contactName, "Cargo": () => data.contactRole, "Email responsable": () => data.contactEmail, "Teléfono / WhatsApp": () => data.contactPhone,
     "Nombre reunión": () => data.bookingName, "Duración reunión": () => data.meetingDuration, "Disponibilidad": () => data.availability, "Horario": () => data.schedule,
     "Tratamiento": () => data.pronoun, "Tono comunicación": () => data.communicationTone, "Automatizaciones": () => asText(data.automations), "Integraciones": () => asText(data.integrations),
-    "Cuenta GoHighLevel": () => data.existingGhl, "Google Sheets": () => data.sheets, "Excepciones": () => data.exceptions, "Fecha lanzamiento": () => data.launchDate,
+    "Cuenta GoHighLevel": () => data.existingGhl, "Google Sheets": () => data.sheets, "Excepciones": () => [data.exceptions, Array.isArray(data.additionalLanguages) && data.additionalLanguages.length ? `Idiomas adicionales de comunicación: ${data.additionalLanguages.join(", ")}` : ""].filter(Boolean).join("\n"), "Fecha lanzamiento": () => data.launchDate,
     "Responsable aprobación": () => data.approvalOwner, "Datos correctos": () => Boolean(data.accuracy), "Autorización": () => Boolean(data.terms),
     "Recursos Drive": () => data.driveAssetsUrl, "Color corporativo primario": () => data.brandPrimaryColor || data.brandColor,
     "Color corporativo secundario": () => data.brandSecondaryColor, "Tercer color corporativo": () => data.brandAccentColor, "Tipografía títulos": () => data.headingFont, "Tipografía textos": () => data.bodyFont,
@@ -503,6 +503,9 @@ function valueFor(header, data) {
 function asText(value) { return Array.isArray(value) ? value.join(", ") : (value || ""); }
 function withOther(value, detail) { return Array.isArray(value) ? value.map((item) => item === "Otro" && detail ? `Otro: ${detail}` : item).join(", ") : (value || ""); }
 function choiceWithOther(value, detail) { return /^Otr[oa]\b/i.test(String(value || "")) && String(detail || "").trim() ? String(detail).trim() : (value || ""); }
+function servicePricesText(value) {
+  try { const prices=JSON.parse(String(value||"[]")); return Array.isArray(prices)?prices.filter(item=>item&&typeof item.service==="string"&&typeof item.amount==="string"&&item.service&&item.amount).map(item=>`${item.service}: ${item.amount} ${item.currency||""} · ${item.basis||""}`).join("\n"):""; } catch(error){return "";}
+}
 function configuredLeadQuestions(value) {
   if (!value || typeof value !== "string") return "";
   try {
@@ -510,7 +513,7 @@ function configuredLeadQuestions(value) {
     if (!Array.isArray(questions)) return "";
     return questions.map((item, index) => {
       const options = Array.isArray(item.options) && item.options.length ? ` Opciones: ${item.options.join(" | ")}.` : "";
-      return `${index + 1}. ${item.question} [${item.type}].${options}`;
+      return `${index + 1}. ${item.question} [${item.type}${typeof item.required === "boolean" ? item.required ? "; obligatoria" : "; opcional" : ""}].${options}`;
     }).join("\n");
   } catch (error) { return ""; }
 }

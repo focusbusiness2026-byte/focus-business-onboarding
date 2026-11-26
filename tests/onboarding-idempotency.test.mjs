@@ -201,3 +201,11 @@ test("a retry of an active account may request a link without expanding product 
   assert.deepEqual(sheet.rows[1], original);
   assert.equal(sheet.rows.length, 2);
 });
+
+test("new onboarding details use existing Sheets columns without losing price, language or optional questions",()=>{
+  const {sheet,headers,submit}=setup();
+  const result=submit({primaryLanguage:"Español",additionalLanguages:["Inglés"],services:["Vídeo corporativo"],servicePrices:JSON.stringify([{service:"Vídeo corporativo",amount:"1500",currency:"EUR",basis:"Por proyecto"}]),leadQuestionConfig:JSON.stringify([{question:"Servicio",type:"Selección única",options:["Vídeo","Otro"],required:false}])});
+  assert.equal(result.saved,true);
+  const row=Object.fromEntries(headers.map((header,index)=>[header,sheet.rows[1][index]]));
+  assert.equal(row["Idioma principal"],"Español");assert.match(row.Excepciones,/Inglés/);assert.match(row.Servicios,/1500 EUR/);assert.match(row["Preguntas adicionales"],/opcional/);
+});

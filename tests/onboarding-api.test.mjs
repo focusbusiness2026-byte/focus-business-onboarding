@@ -71,3 +71,27 @@ test("an ambiguous Apps Script reply does not claim a save, while a confirmed re
   assert.doesNotMatch(reviewBody.error, /internal details/);
   assert.equal(outbound.length, 3);
 });
+
+test("the existing downstream profile preserves generated lead questions and their options", async (t) => {
+  process.env.GOOGLE_SHEETS_WEBHOOK_URL = "https://script.google.com/macros/s/test/exec";
+  process.env.FOCUS_PORTAL_TOKEN = "test-token";
+  process.env.VIRAL_RADAR_SYNC_URL = "https://radar.example.test/sync";
+  process.env.VIRAL_RADAR_SYNC_TOKEN = "test-sync";
+  payload.leadQuestionConfig = JSON.stringify([{ id:"1", question:"¿Qué servicio necesitas?", type:"Selección única", options:["Vídeo","Otro"],required:false }]);
+  payload.servicePrices=JSON.stringify([{service:"Vídeo",amount:"1500",currency:"EUR",basis:"Por proyecto"}]);
+  payload.additionalLanguages=["Inglés"];
+  t.after(() => { delete process.env.VIRAL_RADAR_SYNC_URL; delete process.env.VIRAL_RADAR_SYNC_TOKEN; delete payload.leadQuestionConfig; delete payload.servicePrices; delete payload.additionalLanguages; });
+  let received;
+  t.mock.method(globalThis,"fetch",async(input,init) => {
+    if(String(input)===process.env.GOOGLE_SHEETS_WEBHOOK_URL) return Response.json({ok:true,saved:true,id:"ONB-12345678",row:2,accessReady:false});
+    assert.equal(String(input),process.env.VIRAL_RADAR_SYNC_URL);
+    received=JSON.parse(init.body);
+    return Response.json({ok:true});
+  });
+  const response=await requestApp(); assert.equal(response.status,200);
+  assert.match(received.campaign.lead_questions,/¿Qué servicio necesitas\?/);
+  assert.match(received.campaign.lead_questions,/Vídeo \| Otro/);
+  assert.match(received.campaign.lead_questions,/opcional/);
+  assert.match(received.service_prices,/1500/);
+  assert.deepEqual(received.brand.additional_languages,["Inglés"]);
+});

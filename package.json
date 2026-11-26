@@ -6,12 +6,16 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "dev:review": "node scripts/review-server.mjs",
     "dev": "node scripts/run-vinext.mjs dev",
     "build": "node scripts/run-vinext.mjs build",
     "start": "node scripts/run-vinext.mjs start",
     "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "types": "node scripts/worker-types.mjs",
+    "typecheck": "npm run types && tsc --noEmit",
+    "start:assistant": "node scripts/assistant-service.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -44,6 +48,10 @@
   },
   "type": "module",
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "sharp", "workerd"]
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
   }
 }
