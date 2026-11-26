@@ -3,14 +3,20 @@ import test from "node:test";
 import {answerContextHelp} from "../scripts/context-help.mjs";
 import {once} from "node:events";
 import {readFile} from "node:fs/promises";
-import {customerPatch,customerError,onboardingDraftKey} from "../lib/customer-journey.mjs";
+import {customerPatch,customerError,onboardingDraftKey,customerQuestionLanguage} from "../lib/customer-journey.mjs";
 import {proxyAssistant} from "../lib/assistant-proxy.mjs";
 import {createAssistantService} from "../scripts/assistant-service.mjs";
 
 test("a single contact is reused without overwriting another assigned person or approving consent",()=>{
   const input={contactName:"Cliente",businessEmail:"contacto@example.com",accuracy:false,terms:false,ghlPreparationAuthorization:false};
-  assert.deepEqual(customerPatch(input),{...input,contactEmail:input.businessEmail,ownerName:"Cliente"});
+  assert.deepEqual(customerPatch(input),{...input,leadQuestionLanguage:"Español",contactEmail:input.businessEmail,ownerName:"Cliente"});
   assert.equal(customerPatch({...input,ownerName:"Otra persona"}).ownerName,"Otra persona");
+});
+
+test("an English website cannot label initial Spanish lead questions as translated",()=>{
+  assert.equal(customerQuestionLanguage({primaryLanguage:"Inglés"}),"Español");
+  assert.equal(customerQuestionLanguage({primaryLanguage:"Inglés",leadQuestionLanguage:"Francés"}),"Francés");
+  assert.equal(customerPatch({primaryLanguage:"Inglés"}).leadQuestionLanguage,"Español");
 });
 
 test("production preserves its existing draft key and isolates the technical local review",()=>{
